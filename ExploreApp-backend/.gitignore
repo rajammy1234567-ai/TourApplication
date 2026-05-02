@@ -1,0 +1,63 @@
+# dependencies
+node_modules/
+
+# expo
+.expo/
+dist/
+web-build/
+
+# native
+*.keystore
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# environment variables
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# macOS
+.DS_Store
+
+# windows
+Thumbs.db
+
+# vscode
+.vscode/
+
+# build files
+*.apk
+*.aab
+*.ipa
+
+# typescript
+*.tsbuildinfo
+
+# metro
+.metro-health-check*
+
+# coverage
+coverage/
+
+# temp
+tmp/
+temp/
+
+# cache
+.cache/
+
+# generated
+dist/
+build/
+
+# firebase
+google-services.json
+GoogleService-Info.plist
