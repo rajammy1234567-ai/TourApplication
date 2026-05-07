@@ -1,88 +1,86 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
+  ActivityIndicator,
   FlatList,
-  Dimensions,
-  SafeAreaView,
+  Image,
   Platform,
+  RefreshControl,
+  SafeAreaView,
   StatusBar,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { apiUrl } from "../../constants/api";
 
-const { width } = Dimensions.get('window');
+type Tour = {
+  _id: string;
+  packageId?: string;
+  title: string;
+  image?: string;
+  duration?: string;
+  people?: string;
+  rating?: number;
+  location?: string;
+  price: number;
+};
 
-/* ✅ DATA */
-const DATA = [
-  {
-    packageId: '1',
-    title: 'Northern Lights Experience in Norway',
-    image: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470',
-    duration: '2 Days',
-    people: '12 People',
-    rating: 4.9,
-    location: 'Norway',
-    price: '$1200',
-  },
-  {
-    packageId: '2',
-    title: 'Dubai Desert Safari Adventure',
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee',
-    duration: '1 Day',
-    people: '20 People',
-    rating: 4.7,
-    location: 'Dubai',
-    price: '$300',
-  },
-  {
-    packageId: '3',
-    title: 'Bali Beach Relax Tour',
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e',
-    duration: '5 Days',
-    people: '10 People',
-    rating: 4.8,
-    location: 'Bali, Indonesia',
-    price: '$800',
-  },
-  {
-    packageId: '4',
-    title: 'Manali Snow Adventure',
-    image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba',
-    duration: '3 Days',
-    people: '8 People',
-    rating: 4.6,
-    location: 'Manali, India',
-    price: '$250',
-  },
-  {
-    packageId: '5',
-    title: 'Thailand Island Trip',
-    image: 'https://images.unsplash.com/photo-1493558103817-58b2924bce98',
-    duration: '4 Days',
-    people: '15 People',
-    rating: 4.9,
-    location: 'Thailand',
-    price: '$600',
-  },
-];
-
-
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
 
 const DiscoverTours = () => {
+  const [tours, setTours] = useState<Tour[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
 
-  const renderItem = ({ item }) => (
-    
+  const fetchTours = useCallback(async () => {
+    try {
+      setError("");
+      const response = await fetch(apiUrl("/api/tours"));
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Unable to load tours");
+      }
+
+      setTours(data.tours || []);
+    } catch (err: any) {
+      setError(err.message || "Unable to load tours");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTours();
+  }, [fetchTours]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchTours();
+  };
+
+  const renderItem = ({ item }: { item: Tour }) => (
     <View style={styles.card}>
-      <Image source={{ uri: item.image }} style={styles.image} />
+      <Image
+        source={{
+          uri: item.image || "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
+        }}
+        style={styles.image}
+      />
 
-      {/* TOP OVERLAY */}
       <View style={styles.overlayTop}>
         <View style={styles.rating}>
-          <Text style={styles.ratingText}>⭐ {item.rating}</Text>
+          <Text style={styles.ratingText}>Rating {Number(item.rating || 0).toFixed(1)}</Text>
         </View>
         <Ionicons name="heart-outline" size={20} color="#fff" />
       </View>
@@ -93,64 +91,78 @@ const DiscoverTours = () => {
         </Text>
 
         <View style={styles.row}>
-          <Text style={styles.meta}>⏱ {item.duration}</Text>
-          <Text style={styles.meta}>👥 {item.people}</Text>
+          <Text style={styles.meta}>{item.duration || "Flexible"}</Text>
+          <Text style={styles.meta}>{item.people || "Group tour"}</Text>
         </View>
 
-        {/* ✅ NAVIGATION FIXED */}
+        <View style={styles.priceRow}>
+          <Text style={styles.location}>{item.location || "Location available after booking"}</Text>
+          <Text style={styles.price}>{formatCurrency(Number(item.price))}</Text>
+        </View>
+
         <TouchableOpacity
           style={styles.button}
-          onPress={() =>{
-            console.log("SENDING ID:", item.packageId); 
+          onPress={() =>
             router.push({
-              pathname: '/tourDetails',
+              pathname: "/tourDetails",
               params: {
-                // id: item.id,
-                packageId: item.packageId,
+                tourId: item._id,
+                packageId: item.packageId || "",
                 title: item.title,
-                image: item.image,
-                rating: item.rating.toString(),
-                duration: item.duration,
-                people: item.people,
-
-                // ✅ IMPORTANT (tumhari requirement)
+                image: item.image || "",
+                rating: String(item.rating || 0),
+                duration: item.duration || "",
+                people: item.people || "",
                 price: String(item.price),
-                locationName: item.location,
-
-                // dummy coords (baad me API se replace)
-                latitude: 32.2432,
-                longitude: 77.1892,
+                locationName: item.location || "",
               },
-            })}
+            })
           }
         >
           <Text style={styles.buttonText}>View Details</Text>
         </TouchableOpacity>
       </View>
     </View>
-    
   );
-  
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-
-        {/* HEADER */}
         <View style={styles.header}>
-          <Ionicons name="arrow-back" size={22} />
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={22} />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>Discover Tours</Text>
           <Ionicons name="search" size={22} />
         </View>
 
-        {/* LIST */}
-        <FlatList
-          data={DATA}
-          keyExtractor={(item) => item.packageId}
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
-        />
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color="#2F5AF3" />
+          </View>
+        ) : error ? (
+          <View style={styles.center}>
+            <Text style={styles.error}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={fetchTours}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={tours}
+            keyExtractor={(item) => item._id}
+            renderItem={renderItem}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={tours.length ? styles.list : styles.emptyWrap}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            ListEmptyComponent={
+              <View style={styles.center}>
+                <Text style={styles.emptyTitle}>No tours available</Text>
+                <Text style={styles.emptyText}>Add tours in MongoDB to start accepting bookings.</Text>
+              </View>
+            }
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -158,97 +170,60 @@ const DiscoverTours = () => {
 
 export default DiscoverTours;
 
-/* STYLES */
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F4F6FA',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    backgroundColor: "#F4F6FA",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
-
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-
+  container: { flex: 1, paddingHorizontal: 16 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 15,
     marginTop: 10,
   },
-
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
+  headerTitle: { fontSize: 16, fontWeight: "700" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  error: { color: "#B91C1C", textAlign: "center", marginBottom: 14 },
+  retryBtn: { backgroundColor: "#2F5AF3", paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
+  retryText: { color: "#fff", fontWeight: "700" },
+  list: { paddingBottom: 100 },
+  emptyWrap: { flexGrow: 1, justifyContent: "center" },
+  emptyTitle: { fontSize: 17, fontWeight: "700", color: "#111827", textAlign: "center" },
+  emptyText: { marginTop: 6, color: "#64748B", textAlign: "center" },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
+    backgroundColor: "#fff",
+    borderRadius: 8,
     marginBottom: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     elevation: 3,
   },
-
-  image: {
-    width: '100%',
-    height: width * 0.5,
-  },
-
+  image: { width: "100%", height: 210 },
   overlayTop: {
-    position: 'absolute',
+    position: "absolute",
     top: 10,
     left: 10,
     right: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-
-  rating: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-
-  ratingText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
-  cardBody: {
-    padding: 14,
-  },
-
-  title: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-
-  meta: {
-    fontSize: 12,
-    color: '#555',
-  },
-
+  rating: { backgroundColor: "#fff", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  ratingText: { fontSize: 12, fontWeight: "600" },
+  cardBody: { padding: 14 },
+  title: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
+  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
+  meta: { fontSize: 12, color: "#555" },
+  priceRow: { flexDirection: "row", justifyContent: "space-between", gap: 12, marginBottom: 12 },
+  location: { flex: 1, color: "#555", fontSize: 12 },
+  price: { color: "#003D82", fontWeight: "700" },
   button: {
-    backgroundColor: '#2F5AF3',
+    backgroundColor: "#2F5AF3",
     paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
+    borderRadius: 8,
+    alignItems: "center",
   },
-
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
+  buttonText: { color: "#fff", fontWeight: "600" },
 });

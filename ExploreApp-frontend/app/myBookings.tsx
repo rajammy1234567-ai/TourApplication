@@ -12,8 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-
-const API_BASE_URL = "http://localhost:5000";
+import { apiUrl } from "../constants/api";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-IN", {
@@ -38,7 +37,7 @@ export default function MyBookings() {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/bookings/my-bookings`, {
+        const response = await fetch(apiUrl("/api/bookings/my-bookings"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();

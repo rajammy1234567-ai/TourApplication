@@ -8,9 +8,14 @@ const bookingSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    packageId: {
-      type: String,
+    tourId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tour",
       required: true,
+      index: true,
+    },
+    packageIdSnapshot: {
+      type: String,
       index: true,
     },
     packageName: {
@@ -18,6 +23,27 @@ const bookingSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    startDate: Date,
+    endDate: Date,
+    travelers: {
+      type: Number,
+      min: 1,
+      default: 1,
+    },
+    children: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    meal: {
+      type: Boolean,
+      default: false,
+    },
+    photo: {
+      type: Boolean,
+      default: false,
+    },
+    room: String,
     totalAmount: {
       type: Number,
       required: true,
@@ -60,5 +86,8 @@ const bookingSchema = new mongoose.Schema(
   },
   { timestamps: { createdAt: true, updatedAt: true } }
 );
+
+
+bookingSchema.index({ userId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Booking", bookingSchema);

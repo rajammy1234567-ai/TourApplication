@@ -12,15 +12,17 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
-import BookNow from "./BookNow";
 
-let MapView = null;
-let Marker = null;
+let MapView: any = null;
+let Marker: any = null;
 if (Platform.OS !== "web") {
   const Maps = require("react-native-maps");
   MapView = Maps.default;
   Marker = Maps.Marker;
 }
+
+const getParam = (value: string | string[] | undefined, fallback = "") =>
+  Array.isArray(value) ? value[0] || fallback : value || fallback;
 
 export default function TourDetails() {
   const params = useLocalSearchParams();
@@ -81,22 +83,23 @@ export default function TourDetails() {
     },
   ];
 
-  const tour = useMemo(() => ({
-    packageId: params.packageId ? String(params.packageId) : "",
-    title: params.title || "Northern Lights Explorer in Norway",
-    image: params.image || "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
-    rating: params.rating || "4.9",
-    reviews: params.reviews || "128",
-    duration: params.duration || "2 Days",
-    people: params.people || "Up to 12",
+   const tour = useMemo(() => ({
+    tourId: getParam(params.tourId, getParam(params.packageId)),
+    packageId: getParam(params.packageId),
+    title: getParam(params.title, "Northern Lights Explorer in Norway"),
+    image: getParam(params.image, "https://images.unsplash.com/photo-1501785888041-af3ef285b470"),
+    rating: getParam(params.rating, "4.9"),
+    reviews: getParam(params.reviews, "128"),
+    duration: getParam(params.duration, "2 Days"),
+    people: getParam(params.people, "Up to 12"),
     language: "English",
-    price: params.price || "$300",
-    locationName: params.locationName || "Tromsø, Norway",
-    latitude: parseFloat(params.latitude) || 69.6492,
-    longitude: parseFloat(params.longitude) || 18.9553,
+    price: getParam(params.price, "$300"),
+    locationName: getParam(params.locationName, "Tromso, Norway"),
+    latitude: parseFloat(getParam(params.latitude)) || 69.6492,
+    longitude: parseFloat(getParam(params.longitude)) || 18.9553,
   }), [params]);
   console.log("TOUR DETAILS PARAMS:", params);
-console.log("PACKAGE ID:", tour.packageId);
+console.log("TOUR ID:", tour.tourId);
 
   return (
     <SafeAreaView style={styles.safe}>

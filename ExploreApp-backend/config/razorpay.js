@@ -1,9 +1,8 @@
 const Razorpay = require("razorpay");
+const { assertRazorpayEnv } = require("./env");
 
 const createRazorpayClient = () => {
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-    throw new Error("Razorpay credentials are not configured");
-  }
+  assertRazorpayEnv();
 
   return new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,

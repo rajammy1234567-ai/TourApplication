@@ -13,10 +13,20 @@ const createToken = (userId) =>
     { expiresIn: "7d" }
   );
 
+  const toSafeUser = (user) => ({
+  _id: user._id,
+  fullname: user.fullname,
+  email: user.email,
+  phone: user.phone,
+  avatar: user.avatar,
+  authProvider: user.authProvider,
+});
+
 // register controller
 exports.register = async (req, res) => {
   try {
-    const { fullname, email, phone, password } = req.body;
+    const { fullname, phone, password } = req.body;
+    const email = req.body.email ? String(req.body.email).toLowerCase() : "";
 
     // ✅ validation
     if (!fullname || !password || (!email && !phone)) {
@@ -26,9 +36,12 @@ exports.register = async (req, res) => {
     }
 
     // ✅ check existing user
-    let existingUser;
-    if (email) existingUser = await User.findOne({ email });
-    if (phone) existingUser = await User.findOne({ phone });
+     const existingUser = await User.findOne({
+      $or: [
+        ...(email ? [{ email: email.toLowerCase() }] : []),
+        ...(phone ? [{ phone }] : []),
+      ],
+    });
 
     if (existingUser) {
       return res.status(400).json({ msg: "User already exists" });
@@ -47,7 +60,7 @@ exports.register = async (req, res) => {
 
     res.json({
       msg: "User registered successfully",
-      user,
+      user: toSafeUser(user),
     });
 
   } catch (err) {
@@ -64,7 +77,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ msg: "Email/Phone and password required" });
     }
 
-    const query = email ? { email } : { phone };
+    const query = email ? { email: email.toLowerCase() } : { phone };
     const user = await User.findOne(query);
 
     if (!user) {
@@ -101,7 +114,7 @@ exports.login = async (req, res) => {
 res.json({
   msg: "Login success",
   token,
-  user: safeUser,
+  user: toSafeUser(user),
 });
 
   } catch (err) {
@@ -169,7 +182,8 @@ res.json({
 
 exports.socialLogin = async (req, res) => {
   try {
-    const { provider, providerId, fullname, email, avatar } = req.body;
+   const { provider, providerId, fullname, avatar } = req.body;
+    const email = req.body.email ? String(req.body.email).toLowerCase() : "";
 
     if (!["google", "apple"].includes(provider)) {
       return res.status(400).json({ msg: "Invalid social login provider" });
@@ -205,10 +219,10 @@ exports.socialLogin = async (req, res) => {
 
     const token = createToken(user._id);
 
-    return res.json({
+   return res.json({
       msg: "Login success",
       token,
-      user,
+      user: toSafeUser(user),
     });
   } catch (err) {
     return res.status(500).json({ msg: err.message });

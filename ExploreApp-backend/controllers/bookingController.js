@@ -1,13 +1,8 @@
-const Booking = require("../models/Booking");
+const asyncHandler = require("../utils/asyncHandler");
+const bookingService = require("../services/bookingService");
 
-exports.getMyBookings = async (req, res) => {
-  try {
-    const bookings = await Booking.find({ userId: req.user._id })
-      .sort({ createdAt: -1 })
-      .lean();
+exports.getMyBookings = asyncHandler(async (req, res) => {
+  const bookings = await bookingService.getUserBookings(req.user?._id);
 
-    return res.json({ success: true, bookings });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
+  res.json({ success: true, bookings });
+});

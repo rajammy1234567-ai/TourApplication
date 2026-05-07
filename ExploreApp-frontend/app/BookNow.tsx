@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+// import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Alert,
@@ -16,8 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { Calendar } from "react-native-calendars";
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+import { apiUrl } from "../constants/api";
 
 declare const document: any;
 declare const require: any;
@@ -32,7 +31,7 @@ const showAlert = (title: string, message?: string) => {
   Alert.alert(title, message);
 };
 
-const getStorageItem = async (key) => {
+const getStorageItem = async (key: string) => {
   try {
     if (Platform.OS === "web") {
       return localStorage.getItem(key);
@@ -89,7 +88,7 @@ export default function BookNow() {
 
   const tour = useMemo(
     () => ({
-      packageId: String(params.packageId || params.id || ""),
+      tourId: String(params.tourId || params.packageId || params.id || ""),
       title: String(params.title || "Northern Lights Explorer"),
       image: String(
         params.image || "https://images.unsplash.com/photo-1501785888041-af3ef285b470"
@@ -153,7 +152,7 @@ export default function BookNow() {
   };
 
   const verifyPayment = async (paymentData: any, token: string, user: any) => {
-    const response = await fetch(`${API_BASE_URL}/api/payment/verify`, {
+     const response = await fetch(apiUrl("/api/payment/verify"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -164,7 +163,7 @@ export default function BookNow() {
         razorpay_payment_id: paymentData.razorpay_payment_id,
         razorpay_signature: paymentData.razorpay_signature,
         userId: user?._id,
-        packageId: tour.packageId,
+        tourId: tour.tourId,
       }),
     });
 
@@ -209,13 +208,35 @@ export default function BookNow() {
       const ready = await loadRazorpayScript();
       if (!ready) throw new Error("Unable to load Razorpay Checkout");
 
-      const checkout = new window.Razorpay(options);
-      checkout.on("payment.failed", (response: any) => {
-        showAlert("Payment failed", response?.error?.description || "Please try again.");
+      await new Promise<void>((resolve, reject) => {
+        const checkout = new window.Razorpay({
+          ...options,
+          handler: async (paymentData: any) => {
+            try {
+              await verifyPayment(paymentData, token, user);
+              showAlert("Booking Confirmed", "Your 10% advance payment was successful.");
+              router.replace("/myBookings");
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              showAlert("Payment cancelled");
+              resolve();
+            },
+          },
+        });
+
+        checkout.on("payment.failed", (response: any) => {
+          reject(new Error(response?.error?.description || "Payment failed. Please try again."));
+        });
+        checkout.open();
       });
-      checkout.open();
       return;
     }
+
 
     const RazorpayCheckout = require("react-native-razorpay").default;
     const paymentData = await RazorpayCheckout.open(options);
@@ -226,13 +247,10 @@ export default function BookNow() {
 
   const handlePayment = async () => {
     try {
+      if (paying) return;
+
       if (!startDate || !endDate) {
         showAlert("Please select travel dates");
-        return;
-      }
-
-      if (!tour.packageId) {
-        showAlert("Package missing", "Please open the tour again and retry booking.");
         return;
       }
 
@@ -248,15 +266,24 @@ const userJson = await getStorageItem("user");
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/payment/create-order`, {
+     const response = await fetch(apiUrl("/api/payment/create-order"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          packageId: tour.packageId,
+     body: JSON.stringify({
+          tourId: tour.tourId,
           userId: user?._id,
+          bookingDetails: {
+            startDate,
+            endDate,
+            travelers,
+            children,
+            meal,
+            photo,
+            room,
+          },
         }),
       });
 

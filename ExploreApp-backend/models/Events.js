@@ -1,35 +1,33 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const eventSchema = new mongoose.Schema({
   title: String,
   description: String,
   category: String,
-
   location: {
     city: String,
     state: String,
     coordinates: {
-      type: [Number], 
-      index: "2dsphere"
-    }
+      type: [Number],
+      index: "2dsphere",
+    },
   },
-
   venue: String,
   startDate: Date,
   endDate: Date,
   price: Number,
   image: String,
-
   source: {
     type: String,
     enum: ["api", "manual"],
-    default: "manual"
+    default: "manual",
   },
-
-  externalId: String,
+  externalId: {
+    type: String,
+    index: true,
+  },
   organizer: String,
-  externalLink: String
-
+  externalLink: String,
 }, { timestamps: true });
 
-export default mongoose.model("Event", eventSchema);
+module.exports = mongoose.model("Event", eventSchema);

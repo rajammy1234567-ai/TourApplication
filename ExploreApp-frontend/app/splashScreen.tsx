@@ -85,7 +85,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onGetStarted }) => {
             <Text style={styles.title}>Travel Explorer</Text>
 
             <Text style={styles.subtitle}>
-              Discover the world's most amazing{"\n"}destinations with us.
+               Discover the world&apos;s most amazing{"\n"}destinations with us.
             </Text>
 
             {/* ILLUSTRATION */}

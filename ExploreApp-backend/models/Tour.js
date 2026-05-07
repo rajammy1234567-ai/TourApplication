@@ -7,16 +7,26 @@ const tourSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    packageId: {
+     packageId: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+    },
+    image: String,
+    location: {
       type: String,
       trim: true,
       index: true,
     },
-    image: String,
-    location: String,
     duration: String,
     people: String,
-    rating: Number,
+    rating: {
+      type: Number,
+      min: 0,
+      max: 5,
+      default: 0,
+    },
     price: {
       type: Number,
       required: true,
@@ -25,5 +35,8 @@ const tourSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+
+tourSchema.index({ title: "text", location: "text" });
 
 module.exports = mongoose.model("Tour", tourSchema);

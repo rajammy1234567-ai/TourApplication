@@ -7,13 +7,24 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-  Platform,
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-const DATA = [
+type CustomTour = {
+  id: string;
+  title: string;
+  image: string;
+  duration: string;
+  people: string;
+  rating: number;
+  location: string;
+  price: string;
+  basePrice: number;
+};
+
+const DATA: CustomTour[] = [
   {
     id: "1",
     title: "Northern Lights Experience in Norway",
@@ -21,8 +32,9 @@ const DATA = [
     duration: "2 Days",
     people: "12 People",
     rating: 4.9,
-    location: "Norway",
+     location: "Norway",
     price: "$1200",
+    basePrice: 1200,
   },
   {
     id: "2",
@@ -31,8 +43,9 @@ const DATA = [
     duration: "1 Day",
     people: "20 People",
     rating: 4.7,
-    location: "Dubai",
+  location: "Dubai",
     price: "$300",
+    basePrice: 300,
   },
   {
     id: "3",
@@ -43,6 +56,7 @@ const DATA = [
     rating: 4.8,
     location: "Bali, Indonesia",
     price: "$800",
+    basePrice: 800,
   },
   {
     id: "4",
@@ -51,8 +65,9 @@ const DATA = [
     duration: "3 Days",
     people: "8 People",
     rating: 4.6,
-    location: "Manali, India",
+     location: "Manali, India",
     price: "$250",
+    basePrice: 250,
   },
   {
     id: "5",
@@ -61,14 +76,15 @@ const DATA = [
     duration: "4 Days",
     people: "15 People",
     rating: 4.9,
-    location: "Thailand",
+ location: "Thailand",
     price: "$600",
+    basePrice: 600,
   },
 ];
 
 export default function CustomizeTour() {
   const [search, setSearch] = useState("");
-  const [selectedTour, setSelectedTour] = useState(null);
+   const [selectedTour, setSelectedTour] = useState<CustomTour | null>(null);
 
   const [flight, setFlight] = useState("");
   const [food, setFood] = useState("");
@@ -94,7 +110,7 @@ export default function CustomizeTour() {
     item.title.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }: { item: CustomTour }) => (
     <TouchableOpacity style={styles.card} onPress={() => setSelectedTour(item)}>
       <Image source={{ uri: item.image }} style={styles.image} />
 
@@ -155,7 +171,7 @@ export default function CustomizeTour() {
                 </Text>
 
                 {/* SERVICES */}
-                <Text style={styles.sectionTitle}>What's Included</Text>
+                <Text style={styles.sectionTitle}>What&apos;s Included</Text>
                 <View style={styles.serviceBox}>
                   <Text style={styles.serviceItem}>✔ 4-5 Star Hotel Stay</Text>
                   <Text style={styles.serviceItem}>✔ Daily Breakfast</Text>
