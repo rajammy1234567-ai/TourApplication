@@ -25,7 +25,7 @@ import { AntDesign, Ionicons } from "@expo/vector-icons";
 WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get("window");
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "http://10.35.59.205:5000"
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL 
   // android: "http://10.0.2.2:5000", // emulator
   // ios: "http://localhost:5000",
   // default: "http://192.168.1.8:5000", //

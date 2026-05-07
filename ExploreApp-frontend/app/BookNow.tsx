@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { Calendar } from "react-native-calendars";
 
-const API_BASE_URL = "http://192.168.1.8:5000";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 declare const document: any;
 declare const require: any;

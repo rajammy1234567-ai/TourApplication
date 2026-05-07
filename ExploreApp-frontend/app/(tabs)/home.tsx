@@ -133,7 +133,7 @@ export default function HomeScreen() {
       router.push({
         pathname: '/tourDetails',
         params: {
-          id: item.id,
+          packageId: item.id.toString(),
           title: item.name,
           image: item.image,
           rating: item.rating.toString(),
