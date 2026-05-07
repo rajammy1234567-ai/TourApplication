@@ -90,11 +90,19 @@ exports.login = async (req, res) => {
        const token = createToken(user._id);
     // );
 
-    res.json({
-      msg: "Login success",
-      token,
-      user,
-    });
+   const safeUser = {
+  _id: user._id,
+  fullname: user.fullname,
+  email: user.email,
+  phone: user.phone,
+  avatar: user.avatar,
+};
+
+res.json({
+  msg: "Login success",
+  token,
+  user: safeUser,
+});
 
   } catch (err) {
     res.status(500).json({ msg: err.message });
