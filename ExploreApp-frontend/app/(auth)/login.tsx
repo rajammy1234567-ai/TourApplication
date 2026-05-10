@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Google from "expo-auth-session/providers/google";
-
 import * as AppleAuthentication from "expo-apple-authentication";
-// import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 import {
@@ -25,42 +23,65 @@ import { AntDesign, Ionicons } from "@expo/vector-icons";
 WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get("window");
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL 
-  // android: "http://10.0.2.2:5000", // emulator
-  // ios: "http://localhost:5000",
-  // default: "http://192.168.1.8:5000", //
 
-  const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
+const STORAGE_KEYS = {
+  token: "token",
+  userData: "userData",
+  wishlistTours: "wishlistTours",
+} as const;
 
-const googleRequestClientId = googleClientId || "missing-google-client-id";
-// const redirectUri = AuthSession.makeRedirectUri();
-// const googleDiscovery = {
-//   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-// };
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+
+type LoginType = "email" | "phone";
+type SocialLoading = "google" | "apple" | null;
+
+type AuthUser = {
+  _id?: string;
+  fullname?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+};
+
+type AuthResponse = {
+  token?: string;
+  user?: AuthUser;
+  data?: {
+    token?: string;
+    user?: AuthUser;
+  };
+  msg?: string;
+  message?: string;
+};
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [loginType, setLoginType] = useState<"email" | "phone">("email");
+
+  const [loginType, setLoginType] = useState<LoginType>("email");
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState<"google" | "apple" | null>(null);
+  const [socialLoading, setSocialLoading] = useState<SocialLoading>(null);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
- const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    clientId: googleRequestClientId,
-    webClientId: googleRequestClientId,
+
+  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    clientId: GOOGLE_CLIENT_ID || undefined,
+    webClientId: GOOGLE_CLIENT_ID || undefined,
     scopes: ["openid", "profile", "email"],
     selectAccount: true,
   });
+
   useEffect(() => {
     Animated.timing(slideAnim, {
       toValue: loginType === "email" ? 0 : 1,
       duration: 250,
       useNativeDriver: false,
     }).start();
-  }, [loginType]);
+  }, [loginType, slideAnim]);
 
   useEffect(() => {
     const finishGoogleLogin = async () => {
@@ -70,25 +91,20 @@ export default function LoginScreen() {
         setSocialLoading("google");
 
         const accessToken = googleResponse.authentication?.accessToken;
-
         if (!accessToken) {
-          throw new Error("Google login did not return an access token");
+          throw new Error("Google login did not return an access token.");
         }
 
-        const profileRes = await fetch(
-          "https://www.googleapis.com/oauth2/v3/userinfo",
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
+        const profileRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
 
         const profile = await profileRes.json();
         if (!profileRes.ok) {
-          throw new Error(profile.error_description || profile.error || "Unable to fetch Google profile");
+          throw new Error(
+            profile?.error_description || profile?.error || "Unable to fetch Google profile."
+          );
         }
-
 
         await completeSocialLogin({
           provider: "google",
@@ -98,7 +114,7 @@ export default function LoginScreen() {
           avatar: profile.picture,
         });
       } catch (error: any) {
-        Alert.alert("Google login failed", error.message || "Please try again");
+        Alert.alert("Google login failed", error?.message || "Please try again.");
       } finally {
         setSocialLoading(null);
       }
@@ -107,17 +123,56 @@ export default function LoginScreen() {
     finishGoogleLogin();
   }, [googleResponse]);
 
-  const persistSession = async (data: any) => {
-      if (!data?.token || !data?.user) {
-      throw new Error("Login response did not include a session");
+  const ensureApiBaseUrl = () => {
+    if (!API_BASE_URL) {
+      Alert.alert(
+        "Missing API URL",
+        "Set EXPO_PUBLIC_API_BASE_URL in your env (example: http://192.168.1.8:5000)."
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const normalizeAuthResponse = (data: AuthResponse) => {
+    const token = data?.token || data?.data?.token || "";
+    const backendUser = data?.user || data?.data?.user;
+
+    const user: AuthUser = {
+      _id: backendUser?._id || "",
+      fullname: backendUser?.fullname || backendUser?.name || "",
+      name: backendUser?.name || backendUser?.fullname || "",
+      email: backendUser?.email || "",
+      phone: backendUser?.phone || "",
+      avatar: backendUser?.avatar || "",
+    };
+
+    return { token, user };
+  };
+
+  const persistSession = async (data: AuthResponse) => {
+    const { token, user } = normalizeAuthResponse(data);
+
+    if (!token || !user) {
+      throw new Error("Login response did not include a valid session.");
     }
 
-    await AsyncStorage.setItem("token", data.token);
-    await AsyncStorage.setItem("user", JSON.stringify(data.user));
+    await AsyncStorage.multiSet([
+      [STORAGE_KEYS.token, token],
+      [STORAGE_KEYS.userData, JSON.stringify(user)],
+    ]);
+
+    const existingWishlist = await AsyncStorage.getItem(STORAGE_KEYS.wishlistTours);
+    if (!existingWishlist) {
+      await AsyncStorage.setItem(STORAGE_KEYS.wishlistTours, JSON.stringify([]));
+    }
+
     router.replace("/(tabs)/home");
   };
 
-  const completeSocialLogin = async (profile: any) => {
+  const completeSocialLogin = async (profile: Record<string, any>) => {
+    if (!ensureApiBaseUrl()) return;
+
     const res = await fetch(`${API_BASE_URL}/api/auth/social-login`, {
       method: "POST",
       headers: {
@@ -126,20 +181,22 @@ export default function LoginScreen() {
       body: JSON.stringify(profile),
     });
 
-    const data = await res.json();
+    const data = (await res.json()) as AuthResponse;
 
     if (!res.ok) {
-      throw new Error(data.msg || "Social login failed");
+      throw new Error(data?.msg || data?.message || "Social login failed.");
     }
 
     await persistSession(data);
   };
 
   const handleSignIn = async () => {
-    if (!emailOrPhone || !password) {
-      Alert.alert("Error", "Fill all fields");
+    if (!emailOrPhone.trim() || !password) {
+      Alert.alert("Error", "Please fill all fields.");
       return;
     }
+
+    if (!ensureApiBaseUrl()) return;
 
     setLoading(true);
 
@@ -147,8 +204,8 @@ export default function LoginScreen() {
       const body = {
         password,
         ...(loginType === "email"
-          ? { email: emailOrPhone }
-          : { phone: emailOrPhone }),
+          ? { email: emailOrPhone.trim().toLowerCase() }
+          : { phone: emailOrPhone.trim() }),
       };
 
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -159,16 +216,15 @@ export default function LoginScreen() {
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as AuthResponse;
 
       if (!res.ok) {
-        Alert.alert("Error", data.msg || "Login failed");
+        Alert.alert("Login Failed", data?.msg || data?.message || "Login failed.");
         return;
       }
 
       await persistSession(data);
     } catch (error) {
-      console.log(error);
       Alert.alert(
         "Network error",
         "Could not reach the server. For Expo Go on a real phone, set EXPO_PUBLIC_API_BASE_URL to your computer IP address."
@@ -178,9 +234,8 @@ export default function LoginScreen() {
     }
   };
 
-  // const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
   const handleGoogleLogin = async () => {
-    if (!googleClientId) {
+    if (!GOOGLE_CLIENT_ID) {
       Alert.alert(
         "Google setup needed",
         "Add EXPO_PUBLIC_GOOGLE_CLIENT_ID in your frontend environment first."
@@ -188,11 +243,11 @@ export default function LoginScreen() {
       return;
     }
 
-   try {
+    try {
       setSocialLoading("google");
       await promptGoogleAsync();
     } catch (error: any) {
-      Alert.alert("Google login failed", error.message || "Please try again");
+      Alert.alert("Google login failed", error?.message || "Please try again.");
     } finally {
       setSocialLoading(null);
     }
@@ -206,7 +261,6 @@ export default function LoginScreen() {
       }
 
       const available = await AppleAuthentication.isAvailableAsync();
-
       if (!available) {
         Alert.alert(
           "Apple login unavailable",
@@ -224,10 +278,7 @@ export default function LoginScreen() {
         ],
       });
 
-      const fullName = [
-        credential.fullName?.givenName,
-        credential.fullName?.familyName,
-      ]
+      const fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
         .filter(Boolean)
         .join(" ");
 
@@ -238,8 +289,8 @@ export default function LoginScreen() {
         email: credential.email,
       });
     } catch (error: any) {
-      if (error.code !== "ERR_REQUEST_CANCELED") {
-        Alert.alert("Apple login failed", error.message || "Please try again");
+      if (error?.code !== "ERR_REQUEST_CANCELED") {
+        Alert.alert("Apple login failed", error?.message || "Please try again.");
       }
     } finally {
       setSocialLoading(null);
@@ -258,10 +309,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="chevron-back" size={28} color="#003D82" />
           </TouchableOpacity>
 
@@ -337,15 +385,9 @@ export default function LoginScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder={
-                loginType === "email"
-                  ? "hello@example.com"
-                  : "+91 98765 43210"
-              }
+              placeholder={loginType === "email" ? "hello@example.com" : "+91 98765 43210"}
               placeholderTextColor="#C9CDD3"
-              keyboardType={
-                loginType === "email" ? "email-address" : "phone-pad"
-              }
+              keyboardType={loginType === "email" ? "email-address" : "phone-pad"}
               autoCapitalize="none"
               value={emailOrPhone}
               onChangeText={setEmailOrPhone}
@@ -356,10 +398,7 @@ export default function LoginScreen() {
         <View style={styles.inputSection}>
           <View style={styles.labelRow}>
             <Text style={styles.inputLabelNoMargin}>Password</Text>
-
-            <TouchableOpacity
-              onPress={() => router.push("/(auth)/forgotPassword")}
-            >
+            <TouchableOpacity onPress={() => router.push("/(auth)/forgotPassword")}>
               <Text style={styles.forgotPassword}>Forgot?</Text>
             </TouchableOpacity>
           </View>
@@ -377,7 +416,7 @@ export default function LoginScreen() {
             />
 
             <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
+              onPress={() => setShowPassword((prev) => !prev)}
               style={styles.eyeButton}
             >
               <Ionicons
@@ -417,9 +456,7 @@ export default function LoginScreen() {
           ) : (
             <>
               <AntDesign name="apple" size={22} color="#000" />
-              <Text style={styles.socialButtonText}>
-                Continue with Apple
-              </Text>
+              <Text style={styles.socialButtonText}>Continue with Apple</Text>
             </>
           )}
         </TouchableOpacity>
@@ -434,9 +471,7 @@ export default function LoginScreen() {
           ) : (
             <>
               <AntDesign name="google" size={22} color="#EA4335" />
-              <Text style={styles.socialButtonText}>
-                Continue with Google
-              </Text>
+              <Text style={styles.socialButtonText}>Continue with Google</Text>
             </>
           )}
         </TouchableOpacity>
@@ -447,8 +482,7 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.signUpContainer}>
-         <Text style={styles.signUpText}>Don&apos;t have an account? </Text>
-
+          <Text style={styles.signUpText}>Don&apos;t have an account? </Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/signUp")}>
             <Text style={styles.signUpLink}>Sign up</Text>
           </TouchableOpacity>

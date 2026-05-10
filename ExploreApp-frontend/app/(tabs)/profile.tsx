@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -6,124 +6,337 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Platform,
   StatusBar,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Alert,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiUrl } from "../../constants/api";
+
+const STORAGE_KEYS = {
+  token: "token",
+  userData: "userData",
+  wishlistTours: "wishlistTours",
+} as const;
+
+type UserData = {
+  _id?: string;
+  fullname?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+};
+
+type WishlistTour = {
+  _id: string;
+  name: string;
+  location?: string;
+  rating?: number;
+  images?: string[];
+};
+
+function safeParseJson<T>(value: string | null, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
 
   const [notifications, setNotifications] = useState(true);
+  const [user, setUser] = useState<UserData | null>(null);
+  const [bookingCount, setBookingCount] = useState(0);
+  const [wishlist, setWishlist] = useState<WishlistTour[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errorText, setErrorText] = useState("");
 
-  // 👉 Mock state (future API se replace ho sakta hai)
-  const [stats] = useState({
-    bookings: 5,
-    wishlist: 12,
-    reviews: 7,
-  });
+  const wishlistCount = useMemo(() => wishlist.length, [wishlist.length]);
 
-  const handleLogout = () => {
-    router.replace("/(auth)/login");
-  };
+  const loadProfileData = useCallback(async () => {
+    setErrorText("");
+    try {
+      const entries = await AsyncStorage.multiGet([
+        STORAGE_KEYS.token,
+        STORAGE_KEYS.userData,
+        STORAGE_KEYS.wishlistTours,
+      ]);
 
- const MenuItem = ({ icon, title, right, onPress }: any) => (
-    <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={onPress}>
+      const map = Object.fromEntries(entries);
+      const token = map[STORAGE_KEYS.token] ?? null;
+      const storedUser = safeParseJson<UserData | null>(
+        map[STORAGE_KEYS.userData],
+        null
+      );
+      const storedWishlist = safeParseJson<WishlistTour[]>(
+        map[STORAGE_KEYS.wishlistTours],
+        []
+      );
+
+      setUser(storedUser);
+      setWishlist(Array.isArray(storedWishlist) ? storedWishlist : []);
+
+      if (token) {
+        try {
+          const response = await fetch(apiUrl("/api/bookings/my-bookings"), {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          const data = await response.json();
+          if (response.ok && data?.success && Array.isArray(data?.bookings)) {
+            setBookingCount(data.bookings.length);
+          } else {
+            setBookingCount(0);
+          }
+        } catch {
+          setBookingCount(0);
+        }
+      } else {
+        setBookingCount(0);
+      }
+    } catch {
+      setErrorText("Unable to load profile data. Pull to refresh.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadProfileData();
+    }, [loadProfileData])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadProfileData();
+  }, [loadProfileData]);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await AsyncStorage.multiRemove([
+              STORAGE_KEYS.token,
+              STORAGE_KEYS.userData,
+              STORAGE_KEYS.wishlistTours,
+            ]);
+            setUser(null);
+            setWishlist([]);
+            setBookingCount(0);
+            router.replace("/(auth)/login");
+          } catch {
+            Alert.alert("Error", "Failed to logout. Please try again.");
+          }
+        },
+      },
+    ]);
+  }, [router]);
+
+  const displayName = useMemo(
+    () => user?.fullname?.trim() || user?.name?.trim() || "User",
+    [user]
+  );
+
+  const displayEmail = useMemo(
+    () => user?.email?.trim() || "No Email",
+    [user?.email]
+  );
+
+  const MenuItem = ({
+    icon,
+    title,
+    right,
+    onPress,
+  }: {
+    icon: keyof typeof Ionicons.glyphMap;
+    title: string;
+    right?: React.ReactNode;
+    onPress?: () => void;
+  }) => (
+    <TouchableOpacity
+      style={styles.menuItem}
+      activeOpacity={0.75}
+      onPress={onPress}
+      disabled={!onPress}
+    >
       <Ionicons name={icon} size={20} color="#1E3A8A" />
       <Text style={styles.menuText}>{title}</Text>
-      {right ? right : <Ionicons name="chevron-forward" size={18} color="#C7C7C7" />}
+      {right ?? <Ionicons name="chevron-forward" size={18} color="#C7C7C7" />}
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#F6F8FC" />
-
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
-        {/* HEADER */}
-        <View style={styles.headerCard}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={42} color="#1E3A8A" />
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {loading ? (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#1E3A8A" />
           </View>
+        ) : (
+          <>
+            <View style={styles.headerCard}>
+              <View style={styles.avatar}>
+                <Ionicons name="person" size={42} color="#1E3A8A" />
+              </View>
+              <Text style={styles.name}>{displayName}</Text>
+              <Text style={styles.email}>{displayEmail}</Text>
+            </View>
 
-          <Text style={styles.name}>John Doe</Text>
-          <Text style={styles.email}>john@example.com</Text>
+            <View style={styles.statsCard}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{bookingCount}</Text>
+                <Text style={styles.statLabel}>Bookings</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{wishlistCount}</Text>
+                <Text style={styles.statLabel}>Wishlist</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>0</Text>
+                <Text style={styles.statLabel}>Reviews</Text>
+              </View>
+            </View>
 
-          <TouchableOpacity style={styles.editBtn} activeOpacity={0.8}>
-            <Text style={styles.editText}>Edit Profile</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.card}>
+              <View style={styles.wishlistHeaderRow}>
+                <Text style={styles.sectionTitle}>Wishlist</Text>
+                <TouchableOpacity onPress={() => router.push("/wishlist")}>
+                  <Text style={styles.seeAllText}>See all</Text>
+                </TouchableOpacity>
+              </View>
 
-        {/* STATS */}
-        <View style={styles.statsCard}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{stats.bookings}</Text>
-            <Text style={styles.statLabel}>Bookings</Text>
-          </View>
+              {wishlist.length === 0 ? (
+                <View style={styles.emptyWishlistWrap}>
+                  <Ionicons name="heart-outline" size={24} color="#9CA3AF" />
+                  <Text style={styles.emptyWishlistText}>
+                    No saved tours yet.
+                  </Text>
+                </View>
+              ) : (
+                <FlatList
+                  scrollEnabled={false}
+                  data={wishlist.slice(0, 5)}
+                  keyExtractor={(item) => item._id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.wishlistItem}
+                      activeOpacity={0.8}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/tourDetails",
+                          params: {
+                            packageId: item._id,
+                            title: item.name,
+                            image: item.images?.[0] || "",
+                            rating: String(item.rating ?? 4),
+                            location: item.location || "",
+                          },
+                        })
+                      }
+                    >
+                      <Image
+                        source={{ uri: item.images?.[0] || "" }}
+                        style={styles.wishlistImage}
+                      />
+                      <View style={styles.wishlistTextWrap}>
+                        <Text style={styles.wishlistTitle} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.wishlistSub} numberOfLines={1}>
+                          {item.location || "Unknown location"}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#C7C7C7" />
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
+            </View>
 
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{stats.wishlist}</Text>
-            <Text style={styles.statLabel}>Wishlist</Text>
-          </View>
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Account</Text>
 
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{stats.reviews}</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
-          </View>
-        </View>
+              <MenuItem icon="person-circle-outline" title="Personal Info" />
+              <MenuItem icon="lock-closed-outline" title="Change Password" />
+              <MenuItem icon="card-outline" title="Payment Methods" />
+              <MenuItem
+                icon="briefcase-outline"
+                title="My Bookings"
+                onPress={() => router.push("/myBookings")}
+              />
+              <MenuItem
+                icon="heart-outline"
+                title="My Wishlist"
+                onPress={() => router.push("/wishlist")}
+              />
 
-        {/* ACCOUNT */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Account</Text>
+              <View style={styles.menuItem}>
+                <Ionicons name="notifications-outline" size={20} color="#1E3A8A" />
+                <Text style={styles.menuText}>Notifications</Text>
+                <Switch
+                  value={notifications}
+                  onValueChange={setNotifications}
+                  trackColor={{ false: "#ccc", true: "#1E3A8A" }}
+                />
+              </View>
 
-          <MenuItem icon="person-circle-outline" title="Personal Info" />
-          <MenuItem icon="lock-closed-outline" title="Change Password" />
-          <MenuItem icon="card-outline" title="Payment Methods" />
-          <MenuItem
-            icon="briefcase-outline"
-            title="My Bookings"
-            onPress={() => router.push("/myBookings")}
-          />
-          <View style={styles.menuItem}>
-            <Ionicons name="notifications-outline" size={20} color="#1E3A8A" />
-            <Text style={styles.menuText}>Notifications</Text>
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: "#ccc", true: "#1E3A8A" }}
-            />
-          </View>
+              <MenuItem icon="globe-outline" title="Language" />
+              <MenuItem icon="help-circle-outline" title="Help & Support" />
+            </View>
 
-          <MenuItem icon="globe-outline" title="Language" />
-          <MenuItem icon="help-circle-outline" title="Help & Support" />
-        </View>
+            {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
-        {/* LOGOUT */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={handleLogout}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="log-out-outline" size={20} color="#fff" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="log-out-outline" size={20} color="#fff" />
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
 
-        <View style={{ height: 30 }} />
+            <View style={{ height: 30 }} />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#F6F8FC",
-  },
+  safe: { flex: 1, backgroundColor: "#F6F8FC" },
+  container: { flex: 1 },
 
-  container: {
-    flex: 1,
+  loaderContainer: {
+    height: 300,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   headerCard: {
@@ -134,7 +347,6 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
     elevation: 3,
   },
-
   avatar: {
     width: 78,
     height: 78,
@@ -144,33 +356,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-
-  name: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-
-  email: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginTop: 2,
-    marginBottom: 10,
-  },
-
-  editBtn: {
-    backgroundColor: "#1E3A8A",
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 10,
-    marginTop: 6,
-  },
-
-  editText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
+  name: { fontSize: 20, fontWeight: "700", color: "#0F172A" },
+  email: { fontSize: 13, color: "#6B7280", marginTop: 2 },
 
   statsCard: {
     flexDirection: "row",
@@ -180,23 +367,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     elevation: 2,
   },
-
-  statBox: {
-    flex: 1,
-    alignItems: "center",
-  },
-
-  statValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1E3A8A",
-  },
-
-  statLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 3,
-  },
+  statBox: { flex: 1, alignItems: "center" },
+  statValue: { fontSize: 18, fontWeight: "700", color: "#1E3A8A" },
+  statLabel: { fontSize: 12, color: "#6B7280", marginTop: 3 },
 
   card: {
     backgroundColor: "#fff",
@@ -206,12 +379,33 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     elevation: 2,
   },
-
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
     color: "#1E3A8A",
     padding: 14,
+  },
+
+  wishlistHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  seeAllText: {
+    color: "#1E3A8A",
+    fontWeight: "600",
+    paddingHorizontal: 14,
+  },
+  emptyWishlistWrap: {
+    borderTopWidth: 1,
+    borderTopColor: "#F1F1F1",
+    padding: 16,
+    alignItems: "center",
+    gap: 8,
+  },
+  emptyWishlistText: {
+    color: "#6B7280",
+    fontSize: 13,
   },
 
   menuItem: {
@@ -222,12 +416,32 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F1F1F1",
   },
+  menuText: { flex: 1, marginLeft: 10, fontSize: 14, color: "#111827" },
 
-  menuText: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 14,
-    color: "#111827",
+  wishlistItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F1F1",
+  },
+  wishlistImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    marginRight: 12,
+    backgroundColor: "#E5E7EB",
+  },
+  wishlistTextWrap: { flex: 1 },
+  wishlistTitle: { fontSize: 14, fontWeight: "600", color: "#111827" },
+  wishlistSub: { fontSize: 12, color: "#6B7280", marginTop: 2 },
+
+  errorText: {
+    color: "#DC2626",
+    fontSize: 12,
+    marginTop: 12,
+    marginHorizontal: 16,
   },
 
   logoutBtn: {
@@ -240,15 +454,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
     elevation: 3,
   },
-
-  logoutText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
+  logoutText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });

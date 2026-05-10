@@ -37,7 +37,7 @@ export default function MyBookings() {
         return;
       }
 
-        const response = await fetch(apiUrl("/api/bookings/my-bookings"), {
+      const response = await fetch(apiUrl("/api/bookings/my-bookings"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -59,7 +59,7 @@ export default function MyBookings() {
     useCallback(() => {
       setLoading(true);
       fetchBookings();
-    }, [])
+    }, []),
   );
 
   const onRefresh = () => {
@@ -73,7 +73,7 @@ export default function MyBookings() {
         <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
           <Ionicons name="chevron-back" size={22} color="#111" />
         </TouchableOpacity>
-        <Text style={styles.heading}>My Bookings</Text>
+        <Text style={styles.heading}>My Bookings ({bookings.length})</Text>
         <View style={styles.iconBtn} />
       </View>
 
@@ -92,13 +92,19 @@ export default function MyBookings() {
         <FlatList
           data={bookings}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={bookings.length ? styles.list : styles.emptyWrap}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          contentContainerStyle={
+            bookings.length ? styles.list : styles.emptyWrap
+          }
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="briefcase-outline" size={34} color="#94A3B8" />
               <Text style={styles.emptyTitle}>No bookings yet</Text>
-              <Text style={styles.emptyText}>Confirmed bookings will appear here after payment.</Text>
+              <Text style={styles.emptyText}>
+                Confirmed bookings will appear here after payment.
+              </Text>
             </View>
           }
           renderItem={({ item }) => (
@@ -111,18 +117,26 @@ export default function MyBookings() {
               <View style={styles.amountRow}>
                 <View>
                   <Text style={styles.label}>Paid Amount</Text>
-                  <Text style={styles.value}>{formatCurrency(item.paidAmount)}</Text>
+                  <Text style={styles.value}>
+                    {formatCurrency(item.paidAmount)}
+                  </Text>
                 </View>
                 <View style={styles.rightAmount}>
                   <Text style={styles.label}>Remaining</Text>
-                  <Text style={styles.remaining}>{formatCurrency(item.remainingAmount)}</Text>
+                  <Text style={styles.remaining}>
+                    {formatCurrency(item.remainingAmount)}
+                  </Text>
                 </View>
               </View>
 
               <View style={styles.footer}>
-                <Text style={styles.paymentStatus}>Payment: {item.paymentStatus}</Text>
+                <Text style={styles.paymentStatus}>
+                  Payment: {item.paymentStatus}
+                </Text>
                 <Text style={styles.date}>
-                  {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""}
+                  {item.createdAt
+                    ? new Date(item.createdAt).toLocaleDateString()
+                    : ""}
                 </Text>
               </View>
             </View>
@@ -143,20 +157,49 @@ const styles = StyleSheet.create({
   },
   iconBtn: { width: 36, height: 36, justifyContent: "center" },
   heading: { fontSize: 18, fontWeight: "700", color: "#111827" },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
   error: { color: "#B91C1C", textAlign: "center", marginBottom: 14 },
-  retryBtn: { backgroundColor: "#0F3B82", paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
+  retryBtn: {
+    backgroundColor: "#0F3B82",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
   retryText: { color: "#fff", fontWeight: "700" },
   list: { padding: 16, paddingBottom: 32 },
   emptyWrap: { flexGrow: 1, justifyContent: "center", padding: 24 },
   empty: { alignItems: "center" },
-  emptyTitle: { marginTop: 10, fontSize: 17, fontWeight: "700", color: "#111827" },
+  emptyTitle: {
+    marginTop: 10,
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#111827",
+  },
   emptyText: { marginTop: 6, textAlign: "center", color: "#64748B" },
-  card: { backgroundColor: "#fff", borderRadius: 8, padding: 16, marginBottom: 14, elevation: 2 },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 14,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
   packageName: { flex: 1, fontSize: 16, fontWeight: "700", color: "#111827" },
   status: { color: "#047857", fontWeight: "700" },
-  amountRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 18 },
+  amountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 18,
+  },
   rightAmount: { alignItems: "flex-end" },
   label: { color: "#64748B", fontSize: 12 },
   value: { marginTop: 4, fontWeight: "700", color: "#0F3B82" },

@@ -15,12 +15,42 @@ import { useLocalSearchParams, router } from "expo-router";
 
 let MapView: any = null;
 let Marker: any = null;
-if (Platform.OS !== "web") {
-  const Maps = require("react-native-maps");
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-}
+// if (Platform.OS !== "web") {
+//   const Maps = require("react-native-maps");
+//   MapView = Maps.default;
+//   Marker = Maps.Marker;
+// }
 
+{Platform.OS === "web" ? (
+  <View
+    style={{
+      height: 200,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#eee",
+      borderRadius: 12,
+    }}
+  >
+    <Text>Map not supported on web</Text>
+  </View>
+) : (
+  <MapView
+    style={{ height: 200 }}
+    initialRegion={{
+      latitude: 28.6139,
+      longitude: 77.2090,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    }}
+  >
+    <Marker
+      coordinate={{
+        latitude: 28.6139,
+        longitude: 77.2090,
+      }}
+    />
+  </MapView>
+)}
 const getParam = (value: string | string[] | undefined, fallback = "") =>
   Array.isArray(value) ? value[0] || fallback : value || fallback;
 
