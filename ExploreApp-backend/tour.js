@@ -17,7 +17,7 @@ const DATA = [
     people: '12 People',
     rating: 4.9,
     location: 'Norway',
-    price: '1200',
+    price: 45000,
   },
   {
     packageId: '2',
@@ -27,7 +27,7 @@ const DATA = [
     people: '20 People',
     rating: 4.7,
     location: 'Dubai',
-    price: '300',
+    price: 65000,
   },
   {
     packageId: '3',
@@ -37,7 +37,7 @@ const DATA = [
     people: '10 People',
     rating: 4.8,
     location: 'Bali, Indonesia',
-    price: '800',
+    price: 75000,
   },
   {
     packageId: '4',
@@ -47,7 +47,7 @@ const DATA = [
     people: '8 People',
     rating: 4.6,
     location: 'Manali, India',
-    price: '250',
+    price: 89000,
   },
   {
     packageId: '5',
@@ -57,7 +57,7 @@ const DATA = [
     people: '15 People',
     rating: 4.9,
     location: 'Thailand',
-    price: '600',
+    price: 45000,
   },
 ];
 
