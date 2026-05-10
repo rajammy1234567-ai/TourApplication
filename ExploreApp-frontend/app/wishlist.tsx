@@ -16,10 +16,12 @@ import { apiUrl } from "../constants/api";
 
 type Destination = {
   _id: string;
-  name: string;
+  name?: string;
+  title?: string;
   location?: string;
   rating?: number;
   images?: string[];
+  image?: string;
   price?: number;
 };
 
@@ -39,23 +41,12 @@ export default function WishlistScreen() {
   const loadWishlist = async () => {
     try {
       setLoading(true);
-      const likedData = await AsyncStorage.getItem("likedTours");
+      const likedData = await AsyncStorage.getItem("wishlistTours");
       if (likedData) {
-        const likedIds = JSON.parse(likedData);
-        const likedTourIds = Object.keys(likedIds).filter((id) => likedIds[id]);
-
-        if (likedTourIds.length > 0) {
-          const response = await fetch(apiUrl("/api/tours"));
-          const data = await response.json();
-          if (data.success && data.tours) {
-            const wishlistTours = data.tours.filter((tour: any) =>
-              likedTourIds.includes(tour._id),
-            );
-            setWishlist(wishlistTours);
-          }
-        } else {
-          setWishlist([]);
-        }
+        const storedTours = JSON.parse(likedData);
+        setWishlist(Array.isArray(storedTours) ? storedTours : []);
+      } else {
+        setWishlist([]);
       }
     } catch (error) {
       console.log("Error loading wishlist:", error);
@@ -66,12 +57,14 @@ export default function WishlistScreen() {
 
   const removeFromWishlist = async (tourId: string) => {
     try {
-      const likedData = await AsyncStorage.getItem("likedTours");
+      const likedData = await AsyncStorage.getItem("wishlistTours");
       if (likedData) {
-        const likedIds = JSON.parse(likedData);
-        delete likedIds[tourId];
-        await AsyncStorage.setItem("likedTours", JSON.stringify(likedIds));
-        setWishlist(wishlist.filter((tour) => tour._id !== tourId));
+        const storedTours = JSON.parse(likedData);
+        const updated = Array.isArray(storedTours) 
+          ? storedTours.filter((t: any) => t._id !== tourId)
+          : [];
+        await AsyncStorage.setItem("wishlistTours", JSON.stringify(updated));
+        setWishlist(updated);
       }
     } catch (error) {
       console.log("Error removing from wishlist:", error);
@@ -82,13 +75,13 @@ export default function WishlistScreen() {
     <View style={styles.card}>
       <Image
         source={{
-          uri: item.images?.[0] || DEFAULT_IMAGE,
+          uri: item.image || item.images?.[0] || DEFAULT_IMAGE,
         }}
         style={styles.image}
       />
 
       <View style={styles.content}>
-        <Text style={styles.title}>{item.name}</Text>
+        <Text style={styles.title}>{item.title || item.name}</Text>
         <Text style={styles.location}>{item.location}</Text>
 
         <View style={styles.ratingRow}>
@@ -107,9 +100,10 @@ export default function WishlistScreen() {
               pathname: "/tourDetails",
               params: {
                 packageId: item._id.toString(),
-                title: item.name,
-                image: item.images?.[0] || DEFAULT_IMAGE,
+                title: item.title || item.name || "",
+                image: item.image || item.images?.[0] || DEFAULT_IMAGE,
                 rating: item.rating?.toString() || "4",
+                price: String(item.price || 15000),
                 location: item.location || "",
               },
             })

@@ -18,6 +18,11 @@ const DATA = [
     rating: 4.9,
     location: 'Norway',
     price: 45000,
+    gallery: [
+      "https://images.unsplash.com/photo-1531366930499-41f53c175731",
+      "https://images.unsplash.com/photo-1483347756197-71ef80e95f73",
+      "https://images.unsplash.com/photo-1579033461380-adb47c3eb938",
+    ]
   },
   {
     packageId: '2',
@@ -28,6 +33,11 @@ const DATA = [
     rating: 4.7,
     location: 'Dubai',
     price: 65000,
+    gallery: [
+      "https://images.unsplash.com/photo-1506461883276-594a12b11cf3",
+      "https://images.unsplash.com/photo-1451187580459-43490279c0fa",
+      "https://images.unsplash.com/photo-1509059852496-f3822ae057bf",
+    ]
   },
   {
     packageId: '3',
@@ -38,6 +48,11 @@ const DATA = [
     rating: 4.8,
     location: 'Bali, Indonesia',
     price: 75000,
+    gallery: [
+      "https://images.unsplash.com/photo-1519046904884-53103b34b206",
+      "https://images.unsplash.com/photo-1473119177891-7440fe9a00aa",
+      "https://images.unsplash.com/photo-1506929662033-75393669402d",
+    ]
   },
   {
     packageId: '4',
@@ -48,6 +63,11 @@ const DATA = [
     rating: 4.6,
     location: 'Manali, India',
     price: 89000,
+    gallery: [
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b",
+      "https://images.unsplash.com/photo-1434394354979-a235cd36269d",
+      "https://images.unsplash.com/photo-1454496522485-0a62b42a4f4c",
+    ]
   },
   {
     packageId: '5',
@@ -58,6 +78,11 @@ const DATA = [
     rating: 4.9,
     location: 'Thailand',
     price: 45000,
+    gallery: [
+      "https://images.unsplash.com/photo-1493558103817-58b2924bce98",
+      "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a",
+      "https://images.unsplash.com/photo-1528181304800-2f173f7533ad",
+    ]
   },
 ];
 
@@ -68,7 +93,7 @@ const sendData = async () => {
 
     await Tour.insertMany(DATA);
 
-    console.log("Tours Inserted");
+    console.log("Tours Inserted with Galleries");
 
     process.exit();
   } catch (error) {

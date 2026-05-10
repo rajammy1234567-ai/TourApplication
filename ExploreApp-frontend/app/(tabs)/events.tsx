@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-const API_BASE_URL = "http://localhost:5000";
+import { apiUrl } from "../../constants/api";
 
 type EventItem = {
   id: string;
@@ -29,6 +29,59 @@ type EventItem = {
 
 const fallbackImage =
   "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4";
+
+const DUMMY_EVENTS: EventItem[] = [
+  {
+    id: "e1",
+    title: "Mountain Music Festival 2026",
+    description: "Join us for a 3-day musical extravaganza in the heart of Manali. Featuring top indie artists and local folk music.",
+    date: "2026-06-15",
+    time: "18:00",
+    image: "https://images.unsplash.com/photo-1459749411177-042180ce673b",
+    location: "Old Manali Ground",
+    city: "Manali",
+  },
+  {
+    id: "e2",
+    title: "Dubai Desert Glow Night",
+    description: "Experience the magic of the desert under the starlit sky with traditional dance, BBQ, and fire shows.",
+    date: "2026-07-10",
+    time: "19:30",
+    image: "https://images.unsplash.com/photo-1506461883276-594a12b11cf3",
+    location: "Safari Camp Site",
+    city: "Dubai",
+  },
+  {
+    id: "e3",
+    title: "Bali Spices & Flavors Expo",
+    description: "A culinary journey through Indonesia. Taste authentic Balinese dishes prepared by master chefs.",
+    date: "2026-08-05",
+    time: "12:00",
+    image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1",
+    location: "Ubud Art Market",
+    city: "Bali",
+  },
+  {
+    id: "e4",
+    title: "Arctic Aurora Photo Workshop",
+    description: "Learn how to capture the perfect shot of the Northern Lights with professional landscape photographers.",
+    date: "2026-11-20",
+    time: "21:00",
+    image: "https://images.unsplash.com/photo-1531366930477-4f85e80ad971",
+    location: "Polar Base Camp",
+    city: "Tromso",
+  },
+  {
+    id: "e5",
+    title: "Sunset Beats & Beach Party",
+    description: "The ultimate beach party experience with world-class DJs, tropical drinks, and high-energy vibes.",
+    date: "2026-09-12",
+    time: "17:00",
+    image: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3",
+    location: "Seminyak Beach",
+    city: "Bali",
+  },
+];
 
   
 
@@ -51,32 +104,40 @@ export default function EventsScreen() {
   const fetchEvents = useCallback(async () => {
     try {
       setMessage("");
+      setLoading(true);
 
       const permission = await Location.requestForegroundPermissionsAsync();
-      if (permission.status !== "granted") {
-        setEvents([]);
-        setMessage("Location permission is needed to find nearby events.");
-        return;
+      let apiEvents: EventItem[] = [];
+
+      if (permission.status === "granted") {
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const { latitude, longitude } = currentLocation.coords;
+
+        const response = await fetch(
+          apiUrl(`/api/events?lat=${latitude}&lng=${longitude}`)
+        );
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          apiEvents = data;
+        }
       }
 
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const { latitude, longitude } = currentLocation.coords;
-
-      const response = await fetch(
-        `${API_BASE_URL}/api/events?lat=${latitude}&lng=${longitude}`
-      );
-      const data = await response.json();
-
-      setEvents(Array.isArray(data) ? data : []);
-      if (!Array.isArray(data) || data.length === 0) {
+      // Merge API events with our featured dummy events
+      const mergedEvents = [...apiEvents, ...DUMMY_EVENTS];
+      
+      // Remove duplicates if any (based on title)
+      const uniqueEvents = mergedEvents.filter((v, i, a) => a.findIndex(t => (t.title === v.title)) === i);
+      
+      setEvents(uniqueEvents);
+      
+      if (uniqueEvents.length === 0) {
         setMessage("No events found nearby right now.");
       }
     } catch (error) {
-      console.log(error);
-      setEvents([]);
-      setMessage("Unable to load nearby events.");
+      console.log("Fetch events error:", error);
+      setEvents(DUMMY_EVENTS); // Fallback to dummy data on error
     } finally {
       setLoading(false);
       setRefreshing(false);

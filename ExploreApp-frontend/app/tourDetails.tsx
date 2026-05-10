@@ -7,50 +7,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
-  Share, // ✅ ADDED
+  Share,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 
-let MapView: any = null;
-let Marker: any = null;
-// if (Platform.OS !== "web") {
-//   const Maps = require("react-native-maps");
-//   MapView = Maps.default;
-//   Marker = Maps.Marker;
-// }
+import MapComponent from "../components/MapComponent";
 
-{Platform.OS === "web" ? (
-  <View
-    style={{
-      height: 200,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: "#eee",
-      borderRadius: 12,
-    }}
-  >
-    <Text>Map not supported on web</Text>
-  </View>
-) : (
-  <MapView
-    style={{ height: 200 }}
-    initialRegion={{
-      latitude: 28.6139,
-      longitude: 77.2090,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
-    }}
-  >
-    <Marker
-      coordinate={{
-        latitude: 28.6139,
-        longitude: 77.2090,
-      }}
-    />
-  </MapView>
-)}
 const getParam = (value: string | string[] | undefined, fallback = "") =>
   Array.isArray(value) ? value[0] || fallback : value || fallback;
 
@@ -113,6 +77,44 @@ export default function TourDetails() {
     },
   ];
 
+  const getDynamicGallery = (title: string) => {
+    const lowerTitle = (title || "").toLowerCase();
+    
+    const beachImages = [
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
+      "https://images.unsplash.com/photo-1519046904884-53103b34b206",
+      "https://images.unsplash.com/photo-1473119177891-7440fe9a00aa",
+      "https://images.unsplash.com/photo-1506929662033-75393669402d",
+    ];
+    
+    const mountainImages = [
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b",
+      "https://images.unsplash.com/photo-1434394354979-a235cd36269d",
+      "https://images.unsplash.com/photo-1454496522485-0a62b42a4f4c",
+      "https://images.unsplash.com/photo-1486848538183-51076af7f0a7",
+    ];
+
+    const arcticImages = [
+      "https://images.unsplash.com/photo-1531366930499-41f53c175731",
+      "https://images.unsplash.com/photo-1483347756197-71ef80e95f73",
+      "https://images.unsplash.com/photo-1579033461380-adb47c3eb938",
+      "https://images.unsplash.com/photo-1502082553048-f009c37129b9",
+    ];
+
+    const generalImages = [
+      "https://images.unsplash.com/photo-1533105079780-92b9be482077",
+      "https://images.unsplash.com/photo-1517048676732-d65bc937f952",
+      "https://images.unsplash.com/photo-1527631746610-bca00a040d60",
+      "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9",
+    ];
+
+    if (lowerTitle.includes("beach") || lowerTitle.includes("ocean") || lowerTitle.includes("island")) return beachImages;
+    if (lowerTitle.includes("mountain") || lowerTitle.includes("trek") || lowerTitle.includes("peak")) return mountainImages;
+    if (lowerTitle.includes("aurora") || lowerTitle.includes("lights") || lowerTitle.includes("arctic") || lowerTitle.includes("norway")) return arcticImages;
+    
+    return generalImages;
+  };
+
    const tour = useMemo(() => ({
     tourId: getParam(params.tourId, getParam(params.packageId)),
     packageId: getParam(params.packageId),
@@ -123,13 +125,12 @@ export default function TourDetails() {
     duration: getParam(params.duration, "2 Days"),
     people: getParam(params.people, "Up to 12"),
     language: "English",
-    price: getParam(params.price, "$300"),
+    price: getParam(params.price, "15000"),
     locationName: getParam(params.locationName, "Tromso, Norway"),
     latitude: parseFloat(getParam(params.latitude)) || 69.6492,
     longitude: parseFloat(getParam(params.longitude)) || 18.9553,
+    gallery: params.gallery ? (typeof params.gallery === 'string' ? JSON.parse(params.gallery) : params.gallery) : null,
   }), [params]);
-  console.log("TOUR DETAILS PARAMS:", params);
-console.log("TOUR ID:", tour.tourId);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -147,13 +148,10 @@ console.log("TOUR ID:", tour.tourId);
               </TouchableOpacity>
 
               <View style={{ flexDirection: "row", gap: 10 }}>
-                
-                {/* ✅ SHARE FIXED */}
                 <TouchableOpacity style={styles.circleBtn} onPress={onShare}>
                   <Ionicons name="share-social-outline" size={18} />
                 </TouchableOpacity>
 
-                {/* ❤️ LIKE TOGGLE */}
                 <TouchableOpacity style={styles.circleBtn} onPress={() => setLiked(!liked)}>
                   <Ionicons
                     name={liked ? "heart" : "heart-outline"}
@@ -161,7 +159,6 @@ console.log("TOUR ID:", tour.tourId);
                     color={liked ? "red" : "black"}
                   />
                 </TouchableOpacity>
-
               </View>
             </View>
 
@@ -207,6 +204,20 @@ console.log("TOUR ID:", tour.tourId);
               Experience the magic of the Arctic in the heart of Northern Norway...
             </Text>
 
+            {/* GALLERY SECTION */}
+            <Text style={styles.section}>Traveller Experiences</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.galleryScroll}
+            >
+              {(tour.gallery && tour.gallery.length > 0 ? tour.gallery : getDynamicGallery(tour.title)).map((img: string, index: number) => (
+                <View key={index} style={styles.galleryItem}>
+                  <Image source={{ uri: img }} style={styles.galleryImg} />
+                </View>
+              ))}
+            </ScrollView>
+
             {/* INCLUDED */}
             <Text style={styles.section}>What's Included</Text>
             <View style={styles.includeGrid}>
@@ -240,25 +251,13 @@ console.log("TOUR ID:", tour.tourId);
 
             {/* LOCATION */}
             <Text style={styles.section}>Location</Text>
-            {Platform.OS !== "web" && MapView ? (
-              <View style={styles.map}>
-                <MapView
-                  style={{ flex: 1 }}
-                  initialRegion={{
-                    latitude: tour.latitude,
-                    longitude: tour.longitude,
-                    latitudeDelta: 0.05,
-                    longitudeDelta: 0.05,
-                  }}
-                >
-                  <Marker coordinate={{ latitude: tour.latitude, longitude: tour.longitude }} />
-                </MapView>
-              </View>
-            ) : (
-              <Text>📍 {tour.locationName}</Text>
-            )}
+            <Text style={{ marginBottom: 10 }}> {tour.locationName}</Text>
 
-            {/* ⭐ NEW: PACKAGES SECTION (CLICKABLE CARDS) */}
+            <View style={styles.mapWrap}>
+              <MapComponent latitude={tour.latitude} longitude={tour.longitude} />
+            </View>
+
+            {/* PACKAGES SECTION */}
             <Text style={styles.section}>Packages</Text>
 
             {packagesData.map((pkg) => (
@@ -278,26 +277,25 @@ console.log("TOUR ID:", tour.tourId);
         <View style={[styles.footer, { paddingBottom: insets.bottom || 10 }]}>
           <View>
             <Text style={styles.total}>Total Price</Text>
-            <Text style={styles.price}>{tour.price} <Text style={styles.per}>/person</Text></Text>
+            <Text style={styles.price}>₹{tour.price} <Text style={styles.per}>/person</Text></Text>
           </View>
           <TouchableOpacity
             style={styles.bookBtn}
             onPress={() =>{
-              console.log("package id is " , tour.packageId);
               router.push({
                 pathname: "/BookNow",
                 params: {
-                 packageId: tour.packageId, 
-      title: tour.title,
-      image: tour.image,
-      rating: tour.rating,
-      price: tour.price,
-      locationName: tour.locationName,
+                  packageId: tour.packageId, 
+                  title: tour.title,
+                  image: tour.image,
+                  rating: tour.rating,
+                  price: tour.price,
+                  locationName: tour.locationName,
                 },
               })}
             }
           >
-            <Text style={{ color: "#fff" }}>Book Now</Text>
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>Book Now</Text>
           </TouchableOpacity>
         </View>
 
@@ -423,14 +421,14 @@ const styles = StyleSheet.create({
   ititle: { fontWeight: "bold" },
   idesc: { color: "#6b7280", fontSize: 12, marginTop: 2 },
 
-  map: {
-    height: 140,
-    borderRadius: 12,
+  mapWrap: {
+    height: 180,
+    borderRadius: 15,
     overflow: "hidden",
     marginTop: 10,
+    backgroundColor: "#f3f4f6",
   },
-
-  // ⭐ NEW PACKAGES UI
+  
   packageCard: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -468,5 +466,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
+  },
+
+  galleryScroll: {
+    marginTop: 12,
+    gap: 12,
+    paddingRight: 20,
+  },
+  galleryItem: {
+    width: 140,
+    height: 140,
+    borderRadius: 15,
+    overflow: "hidden",
+    backgroundColor: "#f3f4f6",
+  },
+  galleryImg: {
+    width: "100%",
+    height: "100%",
   },
 });

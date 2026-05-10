@@ -32,6 +32,7 @@ const tourSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    gallery: [String],
   },
   { timestamps: true }
 );

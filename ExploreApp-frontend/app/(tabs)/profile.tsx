@@ -116,7 +116,6 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
       loadProfileData();
     }, [loadProfileData])
   );
@@ -218,73 +217,18 @@ export default function ProfileScreen() {
                 <Text style={styles.statLabel}>Wishlist</Text>
               </View>
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>0</Text>
-                <Text style={styles.statLabel}>Reviews</Text>
+                <Text style={styles.statValue}>1</Text>
+                <Text style={styles.statLabel}>Online</Text>
               </View>
             </View>
 
-            <View style={styles.card}>
-              <View style={styles.wishlistHeaderRow}>
-                <Text style={styles.sectionTitle}>Wishlist</Text>
-                <TouchableOpacity onPress={() => router.push("/wishlist")}>
-                  <Text style={styles.seeAllText}>See all</Text>
-                </TouchableOpacity>
-              </View>
-
-              {wishlist.length === 0 ? (
-                <View style={styles.emptyWishlistWrap}>
-                  <Ionicons name="heart-outline" size={24} color="#9CA3AF" />
-                  <Text style={styles.emptyWishlistText}>
-                    No saved tours yet.
-                  </Text>
-                </View>
-              ) : (
-                <FlatList
-                  scrollEnabled={false}
-                  data={wishlist.slice(0, 5)}
-                  keyExtractor={(item) => item._id}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.wishlistItem}
-                      activeOpacity={0.8}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/tourDetails",
-                          params: {
-                            packageId: item._id,
-                            title: item.name,
-                            image: item.images?.[0] || "",
-                            rating: String(item.rating ?? 4),
-                            location: item.location || "",
-                          },
-                        })
-                      }
-                    >
-                      <Image
-                        source={{ uri: item.images?.[0] || "" }}
-                        style={styles.wishlistImage}
-                      />
-                      <View style={styles.wishlistTextWrap}>
-                        <Text style={styles.wishlistTitle} numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                        <Text style={styles.wishlistSub} numberOfLines={1}>
-                          {item.location || "Unknown location"}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color="#C7C7C7" />
-                    </TouchableOpacity>
-                  )}
-                />
-              )}
-            </View>
 
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Account</Text>
 
-              <MenuItem icon="person-circle-outline" title="Personal Info" />
+              {/* <MenuItem icon="person-circle-outline" title="Personal Info" />
               <MenuItem icon="lock-closed-outline" title="Change Password" />
-              <MenuItem icon="card-outline" title="Payment Methods" />
+              <MenuItem icon="card-outline" title="Payment Methods" /> */}
               <MenuItem
                 icon="briefcase-outline"
                 title="My Bookings"
@@ -306,8 +250,24 @@ export default function ProfileScreen() {
                 />
               </View>
 
-              <MenuItem icon="globe-outline" title="Language" />
-              <MenuItem icon="help-circle-outline" title="Help & Support" />
+              <MenuItem
+                icon="globe-outline"
+                title="Language"
+                right={<Text style={{ color: "#6B7280", marginRight: 5 }}>English</Text>}
+                onPress={() => {
+                  Alert.alert("Select Language", "Choose your preferred language", [
+                    { text: "English", onPress: () => {} },
+                    { text: "Hindi", onPress: () => {} },
+                    { text: "Spanish", onPress: () => {} },
+                    { text: "Cancel", style: "cancel" },
+                  ]);
+                }}
+              />
+              <MenuItem
+                icon="help-circle-outline"
+                title="Help & Support"
+                onPress={() => router.push("/help")}
+              />
             </View>
 
             {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}

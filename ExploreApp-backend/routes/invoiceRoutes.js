@@ -1,6 +1,7 @@
 const router = require("express").Router();
-const { downloadInvoice } = require("../controllers/invoiceController");
+const { getInvoiceByBookingId } = require("../controllers/invoiceController");
+const { protect } = require("../middlewares/authMiddleware");
 
-router.get("/:id", downloadInvoice);
+router.get("/booking/:bookingId", protect, getInvoiceByBookingId);
 
 module.exports = router;

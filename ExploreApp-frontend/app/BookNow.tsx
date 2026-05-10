@@ -75,9 +75,9 @@ const loadRazorpayScript = () =>
 
 export default function BookNow() {
   const params = useLocalSearchParams();
-  const [travelers, setTravelers] = useState(2);
+  const [travelers, setTravelers] = useState(1);
   const [children, setChildren] = useState(0);
-  const [meal, setMeal] = useState(true);
+  const [meal, setMeal] = useState(false);
   const [photo, setPhoto] = useState(false);
   const [room, setRoom] = useState("1 Double Bed");
   const [dateModal, setDateModal] = useState(false);
@@ -95,7 +95,7 @@ export default function BookNow() {
       ),
       rating: String(params.rating || "4.9"),
       locationName: String(params.locationName || "Tromso, Norway"),
-      price: parsePrice(params.price || "350"),
+      price: parsePrice(params.price || "15000"),
     }),
     [params]
   );
@@ -114,7 +114,13 @@ export default function BookNow() {
     const dates: Record<string, any> = {};
 
     if (startDate && !endDate) {
-      dates[startDate] = { selected: true, selectedColor: "#0F3B82" };
+      dates[startDate] = { 
+        selected: true, 
+        startingDay: true, 
+        endingDay: true, 
+        color: "#0F3B82", 
+        textColor: "white" 
+      };
       return dates;
     }
 
@@ -124,12 +130,17 @@ export default function BookNow() {
 
       while (current <= last) {
         const date = current.toISOString().split("T")[0];
-        dates[date] = { color: "#0F3B82", textColor: "white" };
+        const isStart = date === startDate;
+        const isEnd = date === endDate;
+        
+        dates[date] = {
+          color: isStart || isEnd ? "#0F3B82" : "#EAF0FF",
+          textColor: isStart || isEnd ? "white" : "#0F3B82",
+          startingDay: isStart,
+          endingDay: isEnd,
+        };
         current.setDate(current.getDate() + 1);
       }
-
-      dates[startDate] = { startingDay: true, color: "#0F3B82", textColor: "white" };
-      dates[endDate] = { endingDay: true, color: "#0F3B82", textColor: "white" };
     }
 
     return dates;
@@ -386,10 +397,42 @@ const userJson = await getStorageItem("user");
               markingType="period"
               markedDates={getDates()}
               onDayPress={onSelectDate}
+              theme={{
+                backgroundColor: "#ffffff",
+                calendarBackground: "#ffffff",
+                textSectionTitleColor: "#b6c1cd",
+                selectedDayBackgroundColor: "#0F3B82",
+                selectedDayTextColor: "#ffffff",
+                todayTextColor: "#0F3B82",
+                dayTextColor: "#2d4150",
+                textDisabledColor: "#d9e1e8",
+                dotColor: "#0F3B82",
+                selectedDotColor: "#ffffff",
+                arrowColor: "#0F3B82",
+                disabledArrowColor: "#d9e1e8",
+                monthTextColor: "#0F3B82",
+                indicatorColor: "#0F3B82",
+                textDayFontWeight: "400",
+                textMonthFontWeight: "bold",
+                textDayHeaderFontWeight: "600",
+                textDayFontSize: 14,
+                textMonthFontSize: 16,
+                textDayHeaderFontSize: 12,
+              }}
+              style={styles.calendar}
             />
-            <TouchableOpacity style={styles.closeBtn} onPress={() => setDateModal(false)}>
-              <Text style={styles.closeText}>Done</Text>
-            </TouchableOpacity>
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => {
+                setStartDate("");
+                setEndDate("");
+                setDateModal(false);
+              }}>
+                <Text style={styles.cancelText}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.closeBtn} onPress={() => setDateModal(false)}>
+                <Text style={styles.closeText}>Confirm Dates</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -560,15 +603,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 20,
   },
-  modalBox: { backgroundColor: "#fff", borderRadius: 8, padding: 18 },
-  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 14 },
-  closeBtn: {
-    marginTop: 14,
-    backgroundColor: "#0F3B82",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
+  modalBox: { backgroundColor: "#fff", borderRadius: 24, padding: 24, elevation: 10 },
+  modalTitle: { fontSize: 20, fontWeight: "800", marginBottom: 20, color: "#111827", textAlign: "center" },
+  calendar: { borderRadius: 12, marginBottom: 10 },
+  modalFooter: { flexDirection: "row", gap: 12, marginTop: 15 },
+  cancelBtn: { flex: 1, backgroundColor: "#F3F4F6", padding: 14, borderRadius: 14, alignItems: "center" },
+  cancelText: { color: "#4B5563", fontWeight: "700" },
+  closeBtn: { flex: 2, backgroundColor: "#0F3B82", padding: 14, borderRadius: 14, alignItems: "center" },
   closeText: { color: "#fff", fontWeight: "700" },
-  roomItem: { paddingVertical: 14, borderBottomWidth: 1, borderColor: "#eee" },
+  roomItem: { paddingVertical: 16, borderBottomWidth: 1, borderColor: "#F3F4F6" },
 });

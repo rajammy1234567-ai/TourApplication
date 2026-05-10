@@ -4,6 +4,7 @@ import * as Google from "expo-auth-session/providers/google";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
+import * as AuthSession from "expo-auth-session";
 import {
   ActivityIndicator,
   Alert,
@@ -71,8 +72,13 @@ export default function LoginScreen() {
   const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
     clientId: GOOGLE_CLIENT_ID || undefined,
     webClientId: GOOGLE_CLIENT_ID || undefined,
+    iosClientId: GOOGLE_CLIENT_ID || undefined,
+    androidClientId: GOOGLE_CLIENT_ID || undefined,
     scopes: ["openid", "profile", "email"],
     selectAccount: true,
+  }, {
+    scheme: "viztravel",
+    preferLocalhost: true,
   });
 
   useEffect(() => {

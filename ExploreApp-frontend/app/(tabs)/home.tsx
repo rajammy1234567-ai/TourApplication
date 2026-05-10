@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { Animated, Easing, Dimensions } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import {
   View,
@@ -23,12 +24,18 @@ const STORAGE_KEYS = {
 
 type Destination = {
   _id: string;
-  name: string;
+  packageId?: string;
+  title?: string;
+  name?: string; // fallback
   location?: string;
   rating?: number;
-  images?: string[];
+  image?: string;
+  images?: string[]; // fallback
+  duration?: string;
+  people?: string;
   category?: string;
   price?: number;
+  gallery?: string[];
 };
 
 type UserData = {
@@ -36,8 +43,15 @@ type UserData = {
   name?: string;
 };
 
-const DEFAULT_IMAGE =
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e";
+const BACKGROUND_IMAGES = [
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
+  "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
+  "https://images.unsplash.com/photo-1493558103817-58b2924bce98",
+  "https://images.unsplash.com/photo-1519681393784-d120267933ba",
+];
+
+const DEFAULT_IMAGE = BACKGROUND_IMAGES[0];
 
 function safeParseJson<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
@@ -58,7 +72,30 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [errorText, setErrorText] = useState("");
 
+  const [showAllFeatured, setShowAllFeatured] = useState(false);
   const categories = ["All", "Beach", "Mountain"];
+
+  const [currentBg, setCurrentBg] = useState(0);
+  const [nextBg, setNextBg] = useState(1);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      // Fade out
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 1500,
+        useNativeDriver: true,
+      }).start(() => {
+        // Switch images
+        setCurrentBg(nextBg);
+        setNextBg((nextBg + 1) % BACKGROUND_IMAGES.length);
+        // Fade back in
+        fadeAnim.setValue(1);
+      });
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [nextBg]);
 
   const wishlistIds = useMemo(
     () => new Set(wishlistTours.map((t) => t._id)),
@@ -135,9 +172,12 @@ export default function HomeScreen() {
 
   const filteredDestinations = useMemo(() => {
     if (activeCategory === "All") return destinations;
-    return destinations.filter((item) =>
-      (item.category || "").toLowerCase().includes(activeCategory.toLowerCase())
-    );
+    return destinations.filter((item) => {
+      const cat = (item.category || "").toLowerCase();
+      const active = activeCategory.toLowerCase();
+      // If the item doesn't have a category, it only shows in "All"
+      return cat.includes(active);
+    });
   }, [activeCategory, destinations]);
 
   const toggleWishlist = useCallback(async (tour: Destination) => {
@@ -182,8 +222,20 @@ export default function HomeScreen() {
       }
     >
       <View style={styles.header}>
-        <Image source={{ uri: DEFAULT_IMAGE }} style={styles.headerImage} />
-        <View style={styles.overlay} />
+        <View style={styles.headerWrapper}>
+          {/* Static Background (the next one to show) */}
+          <Image 
+            source={{ uri: BACKGROUND_IMAGES[nextBg] }} 
+            style={styles.headerImage} 
+          />
+          {/* Animated Overlay (the current one fading out) */}
+          <Animated.Image
+            source={{ uri: BACKGROUND_IMAGES[currentBg] }}
+            style={[styles.headerImage, { position: 'absolute', opacity: fadeAnim }]}
+          />
+          <View style={styles.headerOverlay} />
+        </View>
+
         <View style={styles.headerContent}>
           <Text style={styles.greeting}>Good Morning,</Text>
           <Text style={styles.username}>{userName}</Text>
@@ -191,17 +243,19 @@ export default function HomeScreen() {
             Where will your next adventure take you?
           </Text>
 
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color="#666" />
-            <TextInput
-              placeholder="Search destinations..."
-              value={searchText}
-              onChangeText={setSearchText}
-              style={{ flex: 1, marginLeft: 10 }}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <Ionicons name="options" size={20} color="#003D82" />
+          <View style={styles.searchRow}>
+            <View style={[styles.searchBar, { flex: 1 }]}>
+              <Ionicons name="search" size={20} color="#9CA3AF" />
+              <TextInput
+                placeholder="Where do you want to go?"
+                placeholderTextColor="#9CA3AF"
+                value={searchText}
+                onChangeText={setSearchText}
+                style={{ flex: 1, marginLeft: 10 }}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
           </View>
         </View>
       </View>
@@ -228,7 +282,7 @@ export default function HomeScreen() {
         ))}
       </ScrollView>
 
-      {loadingTours ? (
+      {loadingTours && destinations.length === 0 ? (
         <View style={styles.loaderBox}>
           <ActivityIndicator size="large" color="#003D82" />
         </View>
@@ -251,18 +305,22 @@ export default function HomeScreen() {
                 router.push({
                   pathname: "/tourDetails",
                   params: {
-                    packageId: item._id,
-                    title: item.name,
-                    image: item.images?.[0] || "",
+                    packageId: item.packageId || item._id,
+                    tourId: item._id,
+                    title: item.title || item.name || "",
+                    image: item.image || item.images?.[0] || "",
                     rating: String(item.rating ?? 4),
                     location: item.location || "",
+                    price: String(item.price || 15000),
+                    duration: item.duration || "",
+                    people: item.people || "",
                   },
                 })
               }
               style={styles.card}
             >
               <Image
-                source={{ uri: item.images?.[0] || DEFAULT_IMAGE }}
+                source={{ uri: item.image || item.images?.[0] || DEFAULT_IMAGE }}
                 style={styles.cardImage}
               />
 
@@ -278,9 +336,14 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <Text style={styles.cardSub}>{item.location}</Text>
-                {renderStars(item.rating || 4)}
+                <Text style={styles.cardTitle} numberOfLines={1}>{item.title || item.name}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: 160 }}>
+                  <View>
+                    <Text style={styles.cardSub}>{item.location}</Text>
+                    {renderStars(item.rating || 4)}
+                  </View>
+                  <Text style={styles.cardPrice}>₹{item.price || 15000}</Text>
+                </View>
               </View>
             </TouchableOpacity>
           )}
@@ -290,48 +353,56 @@ export default function HomeScreen() {
       <View style={styles.featureSection}>
         <View style={styles.featureHeader}>
           <Text style={styles.featureTitle}>Featured Tours</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See All</Text>
+          <TouchableOpacity onPress={() => setShowAllFeatured(!showAllFeatured)}>
+            <Text style={styles.seeAll}>{showAllFeatured ? "Show Less" : "See All"}</Text>
           </TouchableOpacity>
         </View>
 
-        {filteredDestinations.slice(0, 3).map((tour) => (
-          <View key={tour._id} style={styles.tourCard}>
+        {filteredDestinations.slice(0, showAllFeatured ? undefined : 3).map((tour) => (
+          <TouchableOpacity
+            key={tour._id}
+            activeOpacity={0.9}
+            onPress={() =>
+              router.push({
+                pathname: "/tourDetails",
+                params: {
+                  packageId: tour.packageId || tour._id,
+                  tourId: tour._id,
+                  title: tour.title || tour.name || "",
+                  image: tour.image || tour.images?.[0] || DEFAULT_IMAGE,
+                  rating: String(tour.rating ?? 4),
+                  location: tour.location || "",
+                  gallery: JSON.stringify(tour.gallery || []),
+                },
+              })
+            }
+            style={styles.tourCard}
+          >
             <Image
-              source={{ uri: tour.images?.[0] || DEFAULT_IMAGE }}
+              source={{ uri: tour.image || tour.images?.[0] || DEFAULT_IMAGE }}
               style={styles.tourImage}
             />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.tourTitle}>{tour.name}</Text>
-              <Text style={styles.tourSub}>{tour.location}</Text>
-              <View style={styles.priceRow}>
-                <Text style={styles.newPrice}>₹{tour.price || 15000}</Text>
-                <Text style={styles.per}>/pax</Text>
+            <View style={styles.tourCardInfo}>
+              <Text style={styles.tourTitle} numberOfLines={1}>{tour.title || tour.name}</Text>
+              
+              <View style={styles.locRow}>
+                <Ionicons name="location-outline" size={14} color="#6B7280" />
+                <Text style={styles.tourSub}>{tour.location}</Text>
+              </View>
+
+              <View style={styles.cardBottomRow}>
+                <View style={styles.priceRow}>
+                  <Text style={styles.newPrice}>₹{tour.price || 15000}</Text>
+                  <Text style={styles.per}>/person</Text>
+                </View>
+                
+                <View style={styles.ratingBadge}>
+                  <Ionicons name="star" size={12} color="#F59E0B" />
+                  <Text style={styles.ratingText}>{tour.rating || 4.5}</Text>
+                </View>
               </View>
             </View>
-
-            <View style={styles.rightSection}>
-              <Text style={styles.rating}>⭐ {tour.rating || 4}</Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  pathname: "/BookNow",
-                  params: {
-                    packageId: tour._id,
-                    title: tour.name,
-                    image: tour.images?.[0] || DEFAULT_IMAGE,
-                    price: String(tour.price || 15000),
-                    location: tour.location || "",
-                  },
-                })
-              }
-              style={styles.bookBtn}
-            >
-              <Text style={styles.bookBtnText}>Book Now</Text>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         ))}
 
         {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
@@ -348,10 +419,20 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     overflow: "hidden",
   },
-  headerImage: { width: "100%", height: "100%" },
-  overlay: {
+  headerWrapper: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+  },
+  headerImage: {
+    width: Dimensions.get("window").width,
+    height: 300,
+  },
+  headerOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0,0,0,0.15)",
   },
   headerContent: { position: "absolute", top: 50, padding: 20 },
   greeting: { color: "#fff" },
@@ -361,6 +442,11 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     marginVertical: 10,
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 15,
   },
   searchBar: {
     backgroundColor: "#fff",
@@ -398,9 +484,10 @@ const styles = StyleSheet.create({
   },
   cardImage: { width: 180, height: 220 },
   heart: { position: "absolute", top: 10, right: 10 },
-  cardContent: { position: "absolute", bottom: 10, left: 10 },
-  cardTitle: { color: "#fff", fontWeight: "700" },
-  cardSub: { color: "#ddd" },
+  cardContent: { position: "absolute", bottom: 10, left: 10, right: 10 },
+  cardTitle: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  cardSub: { color: "#ddd", fontSize: 11 },
+  cardPrice: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
   featureSection: { marginTop: 25, paddingHorizontal: 15 },
   featureHeader: {
@@ -414,26 +501,74 @@ const styles = StyleSheet.create({
   tourCard: {
     flexDirection: "row",
     backgroundColor: "#fff",
-    borderRadius: 15,
-    padding: 10,
-    marginBottom: 15,
+    borderRadius: 20,
+    padding: 12,
+    marginBottom: 16,
     alignItems: "center",
     elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
   },
   tourImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    marginRight: 10,
+    width: 100,
+    height: 100,
+    borderRadius: 16,
   },
-  tourTitle: { fontWeight: "700" },
-  tourSub: { color: "#777", fontSize: 12 },
-  priceRow: { flexDirection: "row", alignItems: "center", marginTop: 5 },
-  newPrice: { fontWeight: "700", color: "#003D82" },
-  per: { fontSize: 12, color: "#777" },
-
-  rightSection: { alignItems: "center", marginLeft: 10 },
-  rating: { fontSize: 12, marginBottom: 5 },
+  tourCardInfo: {
+    flex: 1,
+    marginLeft: 15,
+    height: 100,
+    justifyContent: "space-between",
+    paddingVertical: 2,
+  },
+  tourTitle: { 
+    fontSize: 16, 
+    fontWeight: "700", 
+    color: "#1F2937" 
+  },
+  locRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  tourSub: { 
+    color: "#6B7280", 
+    fontSize: 13 
+  },
+  cardBottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  priceRow: { 
+    flexDirection: "row", 
+    alignItems: "baseline",
+    gap: 2,
+  },
+  newPrice: { 
+    fontSize: 17, 
+    fontWeight: "800", 
+    color: "#1E3A8A" 
+  },
+  per: { 
+    fontSize: 11, 
+    color: "#9CA3AF" 
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#B45309",
+  },
 
   bookBtn: {
     backgroundColor: "#003D82",

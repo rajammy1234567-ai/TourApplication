@@ -97,7 +97,7 @@ const DiscoverTours = () => {
 
         <View style={styles.priceRow}>
           <Text style={styles.location}>{item.location || "Location available after booking"}</Text>
-          <Text style={styles.price}>{formatCurrency(Number(item.price))}</Text>
+          <Text style={styles.price}>{formatCurrency(Number(item.price || 15000))}</Text>
         </View>
 
         <TouchableOpacity
@@ -113,7 +113,7 @@ const DiscoverTours = () => {
                 rating: String(item.rating || 0),
                 duration: item.duration || "",
                 people: item.people || "",
-                price: String(item.price),
+                price: String(item.price || 15000),
                 locationName: item.location || "",
               },
             })
@@ -136,11 +136,11 @@ const DiscoverTours = () => {
           <Ionicons name="search" size={22} />
         </View>
 
-        {loading ? (
+        {loading && tours.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator color="#2F5AF3" />
           </View>
-        ) : error ? (
+        ) : error && tours.length === 0 ? (
           <View style={styles.center}>
             <Text style={styles.error}>{error}</Text>
             <TouchableOpacity style={styles.retryBtn} onPress={fetchTours}>

@@ -5,6 +5,7 @@ const PaymentOrder = require("../models/PaymentOrder");
 const createRazorpayClient = require("../config/razorpay");
 const { assertRazorpayEnv } = require("../config/env");
 const { getTourById } = require("./tourService");
+const { createInvoiceForBooking } = require("./invoiceService");
 const ApiError = require("../utils/ApiError");
 
 const CURRENCY = "INR";
@@ -243,7 +244,10 @@ const verifyPaymentAndCreateBooking = async ({
     paymentOrder.status = "paid";
     await paymentOrder.save();
 
-    return { booking, alreadyConfirmed: false };
+    // 📄 Create Invoice automatically
+    const invoice = await createInvoiceForBooking(booking);
+
+    return { booking, invoice, alreadyConfirmed: false };
   } catch (error) {
     if (error.code === 11000) {
       throw new ApiError(409, "This payment has already been used for a booking");
