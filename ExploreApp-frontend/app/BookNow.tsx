@@ -3,7 +3,6 @@ import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Modal,
   Platform,
   ScrollView,
@@ -12,7 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Image } from "expo-image";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { Calendar } from "react-native-calendars";
@@ -36,7 +37,6 @@ const getStorageItem = async (key: string) => {
     if (Platform.OS === "web") {
       return localStorage.getItem(key);
     } else {
-      const AsyncStorage = require("@react-native-async-storage/async-storage").default;
       return await AsyncStorage.getItem(key);
     }
   } catch (err) {
@@ -75,6 +75,7 @@ const loadRazorpayScript = () =>
 
 export default function BookNow() {
   const params = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const [travelers, setTravelers] = useState(1);
   const [children, setChildren] = useState(0);
   const [meal, setMeal] = useState(false);
@@ -248,12 +249,13 @@ export default function BookNow() {
       return;
     }
 
-
-    const RazorpayCheckout = require("react-native-razorpay").default;
-    const paymentData = await RazorpayCheckout.open(options);
-    await verifyPayment(paymentData, token, user);
-    showAlert("Booking Confirmed", "Your 10% advance payment was successful.");
-    router.replace("/myBookings");
+    const RazorpayCheckout = (Platform.OS as any) !== "web" ? require("react-native-razorpay").default : null;
+    if (RazorpayCheckout) {
+      const paymentData = await RazorpayCheckout.open(options);
+      await verifyPayment(paymentData, token, user);
+      showAlert("Booking Confirmed", "Your 10% advance payment was successful.");
+      router.replace("/myBookings");
+    }
   };
 
   const handlePayment = async () => {
@@ -268,7 +270,7 @@ export default function BookNow() {
       setPaying(true);
 
     const token = await getStorageItem("token");
-const userJson = await getStorageItem("user");
+    const userJson = await getStorageItem("userData");
       const user = userJson ? JSON.parse(userJson) : null;
 
       if (!token) {
@@ -327,7 +329,12 @@ const userJson = await getStorageItem("user");
         </View>
 
         <View style={styles.card}>
-          <Image source={{ uri: tour.image }} style={styles.cardImg} />
+          <Image 
+            source={{ uri: tour.image }} 
+            style={styles.cardImg} 
+            contentFit="cover"
+            transition={200}
+          />
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>{tour.title}</Text>
             <Text style={styles.location}>{tour.locationName}</Text>
@@ -378,7 +385,7 @@ const userJson = await getStorageItem("user");
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16), height: 85 + insets.bottom }]}>
         <View>
           <Text style={styles.footerLabel}>Advance due</Text>
           <Text style={styles.total}>{formatCurrency(advance)}</Text>

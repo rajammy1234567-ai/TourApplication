@@ -2,13 +2,13 @@ import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   Platform,
   Share,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
@@ -115,22 +115,34 @@ export default function TourDetails() {
     return generalImages;
   };
 
-   const tour = useMemo(() => ({
-    tourId: getParam(params.tourId, getParam(params.packageId)),
-    packageId: getParam(params.packageId),
-    title: getParam(params.title, "Northern Lights Explorer in Norway"),
-    image: getParam(params.image, "https://images.unsplash.com/photo-1501785888041-af3ef285b470"),
-    rating: getParam(params.rating, "4.9"),
-    reviews: getParam(params.reviews, "128"),
-    duration: getParam(params.duration, "2 Days"),
-    people: getParam(params.people, "Up to 12"),
-    language: "English",
-    price: getParam(params.price, "15000"),
-    locationName: getParam(params.locationName, "Tromso, Norway"),
-    latitude: parseFloat(getParam(params.latitude)) || 69.6492,
-    longitude: parseFloat(getParam(params.longitude)) || 18.9553,
-    gallery: params.gallery ? (typeof params.gallery === 'string' ? JSON.parse(params.gallery) : params.gallery) : null,
-  }), [params]);
+  const tour = useMemo(() => {
+    let parsedGallery = null;
+    try {
+      if (params.gallery) {
+        parsedGallery = typeof params.gallery === 'string' ? JSON.parse(params.gallery) : params.gallery;
+      }
+    } catch (e) {
+      console.warn("Failed to parse gallery:", e);
+      parsedGallery = null;
+    }
+
+    return {
+      tourId: getParam(params.tourId, getParam(params.packageId)),
+      packageId: getParam(params.packageId),
+      title: getParam(params.title, "Tour Package"),
+      image: getParam(params.image, "https://images.unsplash.com/photo-1501785888041-af3ef285b470"),
+      rating: getParam(params.rating, "4.5"),
+      reviews: getParam(params.reviews, "0"),
+      duration: getParam(params.duration, "TBA"),
+      people: getParam(params.people, "Contact for details"),
+      language: "English",
+      price: getParam(params.price, "15000"),
+      locationName: getParam(params.locationName, "Location TBA"),
+      latitude: parseFloat(getParam(params.latitude)) || 69.6492,
+      longitude: parseFloat(getParam(params.longitude)) || 18.9553,
+      gallery: Array.isArray(parsedGallery) ? parsedGallery : null,
+    };
+  }, [params]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -140,7 +152,7 @@ export default function TourDetails() {
 
           {/* HERO IMAGE */}
           <View style={styles.imageWrap}>
-            <Image source={{ uri: tour.image }} style={styles.image} />
+            <Image source={{ uri: tour.image }} style={styles.image} contentFit="cover" transition={300} />
 
             <View style={styles.topRow}>
               <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
@@ -163,8 +175,8 @@ export default function TourDetails() {
             </View>
 
             <View style={styles.thumbRow}>
-              <Image source={{ uri: tour.image }} style={styles.thumb} />
-              <Image source={{ uri: tour.image }} style={styles.thumb} />
+              <Image source={{ uri: tour.image }} style={styles.thumb} contentFit="cover" transition={200} />
+              <Image source={{ uri: tour.image }} style={styles.thumb} contentFit="cover" transition={200} />
               <View style={[styles.thumb, styles.more]}>
                 <Text style={{ color: "#fff" }}>+5</Text>
               </View>
@@ -213,7 +225,7 @@ export default function TourDetails() {
             >
               {(tour.gallery && tour.gallery.length > 0 ? tour.gallery : getDynamicGallery(tour.title)).map((img: string, index: number) => (
                 <View key={index} style={styles.galleryItem}>
-                  <Image source={{ uri: img }} style={styles.galleryImg} />
+                  <Image source={{ uri: img }} style={styles.galleryImg} contentFit="cover" transition={200} />
                 </View>
               ))}
             </ScrollView>
@@ -274,7 +286,7 @@ export default function TourDetails() {
         </ScrollView>
 
         {/* FOOTER */}
-        <View style={[styles.footer, { paddingBottom: insets.bottom || 10 }]}>
+        <View style={[styles.footer, { paddingBottom: (insets?.bottom || 10) + 10 }]}>
           <View>
             <Text style={styles.total}>Total Price</Text>
             <Text style={styles.price}>₹{tour.price} <Text style={styles.per}>/person</Text></Text>

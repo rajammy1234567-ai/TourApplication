@@ -5,7 +5,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   FlatList,
   TouchableOpacity,
   ScrollView,
@@ -13,6 +12,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiUrl } from "../../constants/api";
@@ -62,6 +62,115 @@ function safeParseJson<T>(value: string | null, fallback: T): T {
   }
 }
 
+const TourCard = React.memo(({ item, wishlistIds, toggleWishlist, router, DEFAULT_IMAGE }: any) => (
+  <TouchableOpacity
+    activeOpacity={0.8}
+    onPress={() =>
+      router.push({
+        pathname: "/tourDetails",
+        params: {
+          packageId: item.packageId || item._id,
+          tourId: item._id,
+          title: item.title || item.name || "",
+          image: item.image || item.images?.[0] || "",
+          rating: String(item.rating ?? 4),
+          location: item.location || "",
+          price: String(item.price || 15000),
+          duration: item.duration || "",
+          people: item.people || "",
+        },
+      })
+    }
+    style={styles.card}
+  >
+    <Image
+      source={{ uri: item.image || item.images?.[0] || DEFAULT_IMAGE }}
+      style={styles.cardImage}
+      contentFit="cover"
+      transition={200}
+    />
+
+    <TouchableOpacity
+      style={styles.heart}
+      onPress={() => toggleWishlist(item)}
+    >
+      <Ionicons
+        name={wishlistIds.has(item._id) ? "heart" : "heart-outline"}
+        size={20}
+        color="red"
+      />
+    </TouchableOpacity>
+
+    <View style={styles.cardContent}>
+      <Text style={styles.cardTitle} numberOfLines={1}>{item.title || item.name}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: 160 }}>
+        <View>
+          <Text style={styles.cardSub}>{item.location}</Text>
+          <View style={{ flexDirection: "row" }}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Ionicons
+                key={i}
+                name={i <= (item.rating || 4) ? "star" : "star-outline"}
+                size={14}
+                color="#FFD700"
+              />
+            ))}
+          </View>
+        </View>
+        <Text style={styles.cardPrice}>₹{item.price || 15000}</Text>
+      </View>
+    </View>
+  </TouchableOpacity>
+));
+
+const FeaturedTourCard = React.memo(({ tour, showAllFeatured, router, DEFAULT_IMAGE }: any) => (
+  <TouchableOpacity
+    activeOpacity={0.9}
+    onPress={() =>
+      router.push({
+        pathname: "/tourDetails",
+        params: {
+          packageId: tour.packageId || tour._id,
+          tourId: tour._id,
+          title: tour.title || tour.name || "",
+          image: tour.image || tour.images?.[0] || DEFAULT_IMAGE,
+          rating: String(tour.rating ?? 4),
+          location: tour.location || "",
+          gallery: JSON.stringify(tour.gallery || []),
+        },
+      })
+    }
+    style={styles.tourCard}
+  >
+    <Image
+      source={{ uri: tour.image || tour.images?.[0] || DEFAULT_IMAGE }}
+      style={styles.tourImage}
+      contentFit="cover"
+      transition={200}
+    />
+    <View style={styles.tourCardInfo}>
+      <Text style={styles.tourTitle} numberOfLines={1}>{tour.title || tour.name}</Text>
+      
+      <View style={styles.locRow}>
+        <Ionicons name="location-outline" size={14} color="#6B7280" />
+        <Text style={styles.tourSub}>{tour.location}</Text>
+      </View>
+
+      <View style={styles.cardBottomRow}>
+        <View style={styles.priceRow}>
+          <Text style={styles.newPrice}>₹{tour.price || 15000}</Text>
+          <Text style={styles.per}>/person</Text>
+        </View>
+        
+        <View style={styles.ratingBadge}>
+          <Ionicons name="star" size={12} color="#F59E0B" />
+          <Text style={styles.ratingText}>{tour.rating || 4.5}</Text>
+        </View>
+      </View>
+    </View>
+  </TouchableOpacity>
+));
+
 export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchText, setSearchText] = useState("");
@@ -77,25 +186,27 @@ export default function HomeScreen() {
 
   const [currentBg, setCurrentBg] = useState(0);
   const [nextBg, setNextBg] = useState(1);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const timer = setInterval(() => {
-      // Fade out
+      // Fade in the NEXT image on top of current
       Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 1500,
+        toValue: 1,
+        duration: 2000, // Slightly longer for premium feel
         useNativeDriver: true,
       }).start(() => {
-        // Switch images
+        // Now that the next image is fully visible:
+        // 1. Make it the current background
         setCurrentBg(nextBg);
+        // 2. Prepare the next next background
         setNextBg((nextBg + 1) % BACKGROUND_IMAGES.length);
-        // Fade back in
-        fadeAnim.setValue(1);
+        // 3. Reset opacity of the top layer back to 0
+        fadeAnim.setValue(0);
       });
     }, 6000);
     return () => clearInterval(timer);
-  }, [nextBg]);
+  }, [nextBg, fadeAnim]);
 
   const wishlistIds = useMemo(
     () => new Set(wishlistTours.map((t) => t._id)),
@@ -223,14 +334,14 @@ export default function HomeScreen() {
     >
       <View style={styles.header}>
         <View style={styles.headerWrapper}>
-          {/* Static Background (the next one to show) */}
+          {/* Static Bottom Layer (The "current" image) */}
           <Image 
-            source={{ uri: BACKGROUND_IMAGES[nextBg] }} 
+            source={{ uri: BACKGROUND_IMAGES[currentBg] }} 
             style={styles.headerImage} 
           />
-          {/* Animated Overlay (the current one fading out) */}
+          {/* Animated Top Layer (The "next" image fading in) */}
           <Animated.Image
-            source={{ uri: BACKGROUND_IMAGES[currentBg] }}
+            source={{ uri: BACKGROUND_IMAGES[nextBg] }}
             style={[styles.headerImage, { position: 'absolute', opacity: fadeAnim }]}
           />
           <View style={styles.headerOverlay} />
@@ -299,53 +410,13 @@ export default function HomeScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() =>
-                router.push({
-                  pathname: "/tourDetails",
-                  params: {
-                    packageId: item.packageId || item._id,
-                    tourId: item._id,
-                    title: item.title || item.name || "",
-                    image: item.image || item.images?.[0] || "",
-                    rating: String(item.rating ?? 4),
-                    location: item.location || "",
-                    price: String(item.price || 15000),
-                    duration: item.duration || "",
-                    people: item.people || "",
-                  },
-                })
-              }
-              style={styles.card}
-            >
-              <Image
-                source={{ uri: item.image || item.images?.[0] || DEFAULT_IMAGE }}
-                style={styles.cardImage}
-              />
-
-              <TouchableOpacity
-                style={styles.heart}
-                onPress={() => toggleWishlist(item)}
-              >
-                <Ionicons
-                  name={wishlistIds.has(item._id) ? "heart" : "heart-outline"}
-                  size={20}
-                  color="red"
-                />
-              </TouchableOpacity>
-
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle} numberOfLines={1}>{item.title || item.name}</Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: 160 }}>
-                  <View>
-                    <Text style={styles.cardSub}>{item.location}</Text>
-                    {renderStars(item.rating || 4)}
-                  </View>
-                  <Text style={styles.cardPrice}>₹{item.price || 15000}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
+            <TourCard 
+              item={item} 
+              wishlistIds={wishlistIds} 
+              toggleWishlist={toggleWishlist} 
+              router={router} 
+              DEFAULT_IMAGE={DEFAULT_IMAGE} 
+            />
           )}
         />
       )}
@@ -359,50 +430,13 @@ export default function HomeScreen() {
         </View>
 
         {filteredDestinations.slice(0, showAllFeatured ? undefined : 3).map((tour) => (
-          <TouchableOpacity
-            key={tour._id}
-            activeOpacity={0.9}
-            onPress={() =>
-              router.push({
-                pathname: "/tourDetails",
-                params: {
-                  packageId: tour.packageId || tour._id,
-                  tourId: tour._id,
-                  title: tour.title || tour.name || "",
-                  image: tour.image || tour.images?.[0] || DEFAULT_IMAGE,
-                  rating: String(tour.rating ?? 4),
-                  location: tour.location || "",
-                  gallery: JSON.stringify(tour.gallery || []),
-                },
-              })
-            }
-            style={styles.tourCard}
-          >
-            <Image
-              source={{ uri: tour.image || tour.images?.[0] || DEFAULT_IMAGE }}
-              style={styles.tourImage}
-            />
-            <View style={styles.tourCardInfo}>
-              <Text style={styles.tourTitle} numberOfLines={1}>{tour.title || tour.name}</Text>
-              
-              <View style={styles.locRow}>
-                <Ionicons name="location-outline" size={14} color="#6B7280" />
-                <Text style={styles.tourSub}>{tour.location}</Text>
-              </View>
-
-              <View style={styles.cardBottomRow}>
-                <View style={styles.priceRow}>
-                  <Text style={styles.newPrice}>₹{tour.price || 15000}</Text>
-                  <Text style={styles.per}>/person</Text>
-                </View>
-                
-                <View style={styles.ratingBadge}>
-                  <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={styles.ratingText}>{tour.rating || 4.5}</Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
+          <FeaturedTourCard 
+            key={tour._id} 
+            tour={tour} 
+            showAllFeatured={showAllFeatured} 
+            router={router} 
+            DEFAULT_IMAGE={DEFAULT_IMAGE} 
+          />
         ))}
 
         {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}

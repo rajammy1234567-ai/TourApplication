@@ -15,12 +15,19 @@ const getTourFilter = (tourId) => {
   return { $or: filters };
 };
 
-const getTours = async ({ search } = {}) => {
+const getTours = async ({ search, page = 1, limit = 10 } = {}) => {
   const filter = search
     ? { $text: { $search: String(search) } }
     : {};
 
-  return Tour.find(filter).sort({ createdAt: -1 }).lean();
+  const skip = (page - 1) * limit;
+
+  return Tour.find(filter)
+    .select("title packageId image location duration people rating price category")
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
 };
 
 const getTourById = async (tourId) => {
