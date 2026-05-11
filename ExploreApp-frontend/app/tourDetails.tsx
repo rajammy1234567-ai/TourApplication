@@ -137,10 +137,10 @@ export default function TourDetails() {
       people: getParam(params.people, "Contact for details"),
       language: "English",
       price: getParam(params.price, "15000"),
-      locationName: getParam(params.locationName, "Location TBA"),
+      locationName: getParam(params.locationName, getParam(params.location, "Location TBA")),
       latitude: parseFloat(getParam(params.latitude)) || 69.6492,
       longitude: parseFloat(getParam(params.longitude)) || 18.9553,
-      gallery: Array.isArray(parsedGallery) ? parsedGallery : null,
+      gallery: Array.isArray(parsedGallery) ? parsedGallery.filter(item => typeof item === 'string') : null,
     };
   }, [params]);
 

@@ -74,10 +74,12 @@ const TourCard = React.memo(({ item, wishlistIds, toggleWishlist, router, DEFAUL
           title: item.title || item.name || "",
           image: item.image || item.images?.[0] || "",
           rating: String(item.rating ?? 4),
-          location: item.location || "",
+          locationName: item.location || "",
           price: String(item.price || 15000),
           duration: item.duration || "",
           people: item.people || "",
+          latitude: String(item.latitude || ""),
+          longitude: String(item.longitude || ""),
         },
       })
     }
@@ -135,7 +137,9 @@ const FeaturedTourCard = React.memo(({ tour, showAllFeatured, router, DEFAULT_IM
           title: tour.title || tour.name || "",
           image: tour.image || tour.images?.[0] || DEFAULT_IMAGE,
           rating: String(tour.rating ?? 4),
-          location: tour.location || "",
+          locationName: tour.location || "",
+          latitude: String(tour.latitude || ""),
+          longitude: String(tour.longitude || ""),
           gallery: JSON.stringify(tour.gallery || []),
         },
       })
