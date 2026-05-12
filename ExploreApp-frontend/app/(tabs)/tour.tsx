@@ -153,6 +153,11 @@ const DiscoverTours = () => {
             keyExtractor={(item) => item._id}
             renderItem={renderItem}
             showsVerticalScrollIndicator={false}
+            // Performance props
+            initialNumToRender={6}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS === 'android'}
             contentContainerStyle={tours.length ? styles.list : styles.emptyWrap}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             ListEmptyComponent={

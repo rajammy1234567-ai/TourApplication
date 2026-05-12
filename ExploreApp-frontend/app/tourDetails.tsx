@@ -81,31 +81,31 @@ export default function TourDetails() {
     const lowerTitle = (title || "").toLowerCase();
     
     const beachImages = [
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
-      "https://images.unsplash.com/photo-1519046904884-53103b34b206",
-      "https://images.unsplash.com/photo-1473119177891-7440fe9a00aa",
-      "https://images.unsplash.com/photo-1506929662033-75393669402d",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1519046904884-53103b34b206?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1473119177891-7440fe9a00aa?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1506929662033-75393669402d?w=600&q=75&auto=format",
     ];
     
     const mountainImages = [
-      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b",
-      "https://images.unsplash.com/photo-1434394354979-a235cd36269d",
-      "https://images.unsplash.com/photo-1454496522485-0a62b42a4f4c",
-      "https://images.unsplash.com/photo-1486848538183-51076af7f0a7",
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1434394354979-a235cd36269d?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1454496522485-0a62b42a4f4c?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1486848538183-51076af7f0a7?w=600&q=75&auto=format",
     ];
 
     const arcticImages = [
-      "https://images.unsplash.com/photo-1531366930499-41f53c175731",
-      "https://images.unsplash.com/photo-1483347756197-71ef80e95f73",
-      "https://images.unsplash.com/photo-1579033461380-adb47c3eb938",
-      "https://images.unsplash.com/photo-1502082553048-f009c37129b9",
+      "https://images.unsplash.com/photo-1531366930499-41f53c175731?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1483347756197-71ef80e95f73?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1579033461380-adb47c3eb938?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=600&q=75&auto=format",
     ];
 
     const generalImages = [
-      "https://images.unsplash.com/photo-1533105079780-92b9be482077",
-      "https://images.unsplash.com/photo-1517048676732-d65bc937f952",
-      "https://images.unsplash.com/photo-1527631746610-bca00a040d60",
-      "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9",
+      "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1527631746610-bca00a040d60?w=600&q=75&auto=format",
+      "https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=600&q=75&auto=format",
     ];
 
     if (lowerTitle.includes("beach") || lowerTitle.includes("ocean") || lowerTitle.includes("island")) return beachImages;

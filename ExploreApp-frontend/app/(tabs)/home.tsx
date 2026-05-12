@@ -44,11 +44,11 @@ type UserData = {
 };
 
 const BACKGROUND_IMAGES = [
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
-  "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
-  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
-  "https://images.unsplash.com/photo-1493558103817-58b2924bce98",
-  "https://images.unsplash.com/photo-1519681393784-d120267933ba",
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1000&q=80&auto=format",
+  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1000&q=80&auto=format",
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1000&q=80&auto=format",
+  "https://images.unsplash.com/photo-1493558103817-58b2924bce98?w=1000&q=80&auto=format",
+  "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1000&q=80&auto=format",
 ];
 
 const DEFAULT_IMAGE = BACKGROUND_IMAGES[0];
@@ -263,19 +263,19 @@ export default function HomeScreen() {
 
   useEffect(() => {
     syncLocalSessionData();
-    fetchTours();
-  }, [fetchTours, syncLocalSessionData]);
+  }, [syncLocalSessionData]);
 
-  useFocusEffect(
-    useCallback(() => {
-      syncLocalSessionData();
-    }, [syncLocalSessionData])
-  );
-
+  // Initial fetch and search with debounce
   useEffect(() => {
+    // If it's the first render and searchText is empty, fetch immediately
+    if (searchText.trim() === "") {
+      fetchTours("");
+      return;
+    }
+
     const id = setTimeout(() => {
       fetchTours(searchText.trim());
-    }, 350);
+    }, 400); // Slightly increased for better UX while typing
 
     return () => clearTimeout(id);
   }, [searchText, fetchTours]);
@@ -409,6 +409,11 @@ export default function HomeScreen() {
           keyExtractor={(item) => item._id}
           showsHorizontalScrollIndicator={false}
           style={{ marginTop: 20 }}
+          // Performance props
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          removeClippedSubviews={true}
           ListEmptyComponent={
             <View style={styles.emptyList}>
               <Text style={styles.emptyListText}>No tours found.</Text>
