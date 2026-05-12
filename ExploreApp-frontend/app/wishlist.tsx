@@ -103,8 +103,8 @@ export default function WishlistScreen() {
                 title: item.title || item.name || "",
                 image: item.image || item.images?.[0] || DEFAULT_IMAGE,
                 rating: item.rating?.toString() || "4",
-                price: String(item.price || 15000),
-                location: item.location || "",
+                price: String(item.price || ""),
+                locationName: item.location || "",
               },
             })
           }

@@ -113,7 +113,7 @@ const DiscoverTours = () => {
                 rating: String(item.rating || 0),
                 duration: item.duration || "",
                 people: item.people || "",
-                price: String(item.price || 15000),
+                price: String(item.price || ""),
                 locationName: item.location || "",
               },
             })
