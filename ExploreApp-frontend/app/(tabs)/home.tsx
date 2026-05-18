@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
 import { Animated, Easing, Dimensions } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import {
@@ -53,6 +59,19 @@ const BACKGROUND_IMAGES = [
 
 const DEFAULT_IMAGE = BACKGROUND_IMAGES[0];
 
+const StarRating = React.memo(({ rating }: { rating: number }) => (
+  <View style={{ flexDirection: "row" }}>
+    {[1, 2, 3, 4, 5].map((i) => (
+      <Ionicons
+        key={i}
+        name={i <= rating ? "star" : "star-outline"}
+        size={14}
+        color="#FFD700"
+      />
+    ))}
+  </View>
+));
+
 function safeParseJson<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
   try {
@@ -62,119 +81,124 @@ function safeParseJson<T>(value: string | null, fallback: T): T {
   }
 }
 
-const TourCard = React.memo(({ item, wishlistIds, toggleWishlist, router, DEFAULT_IMAGE }: any) => (
-  <TouchableOpacity
-    activeOpacity={0.8}
-    onPress={() =>
-      router.push({
-        pathname: "/tourDetails",
-        params: {
-          packageId: item.packageId || item._id,
-          tourId: item._id,
-          title: item.title || item.name || "",
-          image: item.image || item.images?.[0] || "",
-          rating: String(item.rating ?? 4),
-          locationName: item.location || "",
-          price: String(item.price || ""),
-          duration: item.duration || "",
-          people: item.people || "",
-          latitude: String(item.latitude || ""),
-          longitude: String(item.longitude || ""),
-        },
-      })
-    }
-    style={styles.card}
-  >
-    <Image
-      source={{ uri: item.image || item.images?.[0] || DEFAULT_IMAGE }}
-      style={styles.cardImage}
-      contentFit="cover"
-      transition={200}
-    />
-
+const TourCard = React.memo(
+  ({ item, wishlistIds, toggleWishlist, router, DEFAULT_IMAGE }: any) => (
     <TouchableOpacity
-      style={styles.heart}
-      onPress={() => toggleWishlist(item)}
+      activeOpacity={0.8}
+      onPress={() =>
+        router.push({
+          pathname: "/tourDetails",
+          params: {
+            packageId: item.packageId || item._id,
+            tourId: item._id,
+            title: item.title || item.name || "",
+            image: item.image || item.images?.[0] || "",
+            rating: String(item.rating ?? 4),
+            locationName: item.location || "",
+            price: String(item.price || ""),
+            duration: item.duration || "",
+            people: item.people || "",
+            latitude: String(item.latitude || ""),
+            longitude: String(item.longitude || ""),
+          },
+        })
+      }
+      style={styles.card}
     >
-      <Ionicons
-        name={wishlistIds.has(item._id) ? "heart" : "heart-outline"}
-        size={20}
-        color="red"
+      <Image
+        source={{ uri: item.image || item.images?.[0] || DEFAULT_IMAGE }}
+        style={styles.cardImage}
+        contentFit="cover"
+        transition={200}
       />
-    </TouchableOpacity>
 
-    <View style={styles.cardContent}>
-      <Text style={styles.cardTitle} numberOfLines={1}>{item.title || item.name}</Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: 160 }}>
-        <View>
-          <Text style={styles.cardSub}>{item.location}</Text>
-          <View style={{ flexDirection: "row" }}>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Ionicons
-                key={i}
-                name={i <= (item.rating || 4) ? "star" : "star-outline"}
-                size={14}
-                color="#FFD700"
-              />
-            ))}
+      <TouchableOpacity
+        style={styles.heart}
+        onPress={() => toggleWishlist(item)}
+      >
+        <Ionicons
+          name={wishlistIds.has(item._id) ? "heart" : "heart-outline"}
+          size={20}
+          color="red"
+        />
+      </TouchableOpacity>
+
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle} numberOfLines={1}>
+          {item.title || item.name}
+        </Text>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            width: 160,
+          }}
+        >
+          <View>
+            <Text style={styles.cardSub}>{item.location}</Text>
+            <StarRating rating={item.rating || 4} />
+          </View>
+          <Text style={styles.cardPrice}>₹{item.price || 15000}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  ),
+);
+
+const FeaturedTourCard = React.memo(
+  ({ tour, showAllFeatured, router, DEFAULT_IMAGE }: any) => (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() =>
+        router.push({
+          pathname: "/tourDetails",
+          params: {
+            packageId: tour.packageId || tour._id,
+            tourId: tour._id,
+            title: tour.title || tour.name || "",
+            image: tour.image || tour.images?.[0] || DEFAULT_IMAGE,
+            rating: String(tour.rating ?? 4),
+            locationName: tour.location || "",
+            price: String(tour.price || ""),
+            latitude: String(tour.latitude || ""),
+            longitude: String(tour.longitude || ""),
+          },
+        })
+      }
+      style={styles.tourCard}
+    >
+      <Image
+        source={{ uri: tour.image || tour.images?.[0] || DEFAULT_IMAGE }}
+        style={styles.tourImage}
+        contentFit="cover"
+        transition={200}
+      />
+      <View style={styles.tourCardInfo}>
+        <Text style={styles.tourTitle} numberOfLines={1}>
+          {tour.title || tour.name}
+        </Text>
+
+        <View style={styles.locRow}>
+          <Ionicons name="location-outline" size={14} color="#6B7280" />
+          <Text style={styles.tourSub}>{tour.location}</Text>
+        </View>
+
+        <View style={styles.cardBottomRow}>
+          <View style={styles.priceRow}>
+            <Text style={styles.newPrice}>₹{tour.price || 15000}</Text>
+            <Text style={styles.per}>/person</Text>
+          </View>
+
+          <View style={styles.ratingBadge}>
+            <Ionicons name="star" size={12} color="#F59E0B" />
+            <Text style={styles.ratingText}>{tour.rating || 4.5}</Text>
           </View>
         </View>
-        <Text style={styles.cardPrice}>₹{item.price || 15000}</Text>
       </View>
-    </View>
-  </TouchableOpacity>
-));
-
-const FeaturedTourCard = React.memo(({ tour, showAllFeatured, router, DEFAULT_IMAGE }: any) => (
-  <TouchableOpacity
-    activeOpacity={0.9}
-    onPress={() =>
-      router.push({
-        pathname: "/tourDetails",
-        params: {
-          packageId: tour.packageId || tour._id,
-          tourId: tour._id,
-          title: tour.title || tour.name || "",
-          image: tour.image || tour.images?.[0] || DEFAULT_IMAGE,
-          rating: String(tour.rating ?? 4),
-          locationName: tour.location || "",
-          price: String(tour.price || ""),
-          latitude: String(tour.latitude || ""),
-          longitude: String(tour.longitude || ""),
-          gallery: JSON.stringify(tour.gallery || []),
-        },
-      })
-    }
-    style={styles.tourCard}
-  >
-    <Image
-      source={{ uri: tour.image || tour.images?.[0] || DEFAULT_IMAGE }}
-      style={styles.tourImage}
-      contentFit="cover"
-      transition={200}
-    />
-    <View style={styles.tourCardInfo}>
-      <Text style={styles.tourTitle} numberOfLines={1}>{tour.title || tour.name}</Text>
-      
-      <View style={styles.locRow}>
-        <Ionicons name="location-outline" size={14} color="#6B7280" />
-        <Text style={styles.tourSub}>{tour.location}</Text>
-      </View>
-
-      <View style={styles.cardBottomRow}>
-        <View style={styles.priceRow}>
-          <Text style={styles.newPrice}>₹{tour.price || 15000}</Text>
-          <Text style={styles.per}>/person</Text>
-        </View>
-        
-        <View style={styles.ratingBadge}>
-          <Ionicons name="star" size={12} color="#F59E0B" />
-          <Text style={styles.ratingText}>{tour.rating || 4.5}</Text>
-        </View>
-      </View>
-    </View>
-  </TouchableOpacity>
-));
+    </TouchableOpacity>
+  ),
+);
 
 export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -192,6 +216,7 @@ export default function HomeScreen() {
   const [currentBg, setCurrentBg] = useState(0);
   const [nextBg, setNextBg] = useState(1);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const hasInitialFetch = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -215,7 +240,7 @@ export default function HomeScreen() {
 
   const wishlistIds = useMemo(
     () => new Set(wishlistTours.map((t) => t._id)),
-    [wishlistTours]
+    [wishlistTours],
   );
 
   const syncLocalSessionData = useCallback(async () => {
@@ -225,10 +250,13 @@ export default function HomeScreen() {
     ]);
     const map = Object.fromEntries(entries);
 
-    const user = safeParseJson<UserData | null>(map[STORAGE_KEYS.userData], null);
+    const user = safeParseJson<UserData | null>(
+      map[STORAGE_KEYS.userData],
+      null,
+    );
     const storedWishlist = safeParseJson<Destination[]>(
       map[STORAGE_KEYS.wishlistTours],
-      []
+      [],
     );
 
     setUserName(user?.fullname?.trim() || user?.name?.trim() || "User");
@@ -265,17 +293,23 @@ export default function HomeScreen() {
     syncLocalSessionData();
   }, [syncLocalSessionData]);
 
-  // Initial fetch and search with debounce
+  // Only fetch tours once when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasInitialFetch.current) {
+        hasInitialFetch.current = true;
+        fetchTours("");
+      }
+    }, [fetchTours]),
+  );
+
+  // Search debounce - separate from initial fetch
   useEffect(() => {
-    // If it's the first render and searchText is empty, fetch immediately
-    if (searchText.trim() === "") {
-      fetchTours("");
-      return;
-    }
+    if (!searchText.trim()) return;
 
     const id = setTimeout(() => {
       fetchTours(searchText.trim());
-    }, 400); // Slightly increased for better UX while typing
+    }, 400);
 
     return () => clearTimeout(id);
   }, [searchText, fetchTours]);
@@ -296,26 +330,34 @@ export default function HomeScreen() {
     });
   }, [activeCategory, destinations]);
 
-  const toggleWishlist = useCallback(async (tour: Destination) => {
-    try {
-      const exists = wishlistTours.some((item) => item._id === tour._id);
+  const featuredTours = useMemo(
+    () => filteredDestinations.slice(0, showAllFeatured ? undefined : 3),
+    [filteredDestinations, showAllFeatured],
+  );
 
-      let updated: Destination[] = [];
-      if (exists) {
-        updated = wishlistTours.filter((item) => item._id !== tour._id);
-      } else {
-        updated = [tour, ...wishlistTours];
+  const toggleWishlist = useCallback(
+    async (tour: Destination) => {
+      try {
+        const exists = wishlistTours.some((item) => item._id === tour._id);
+
+        let updated: Destination[] = [];
+        if (exists) {
+          updated = wishlistTours.filter((item) => item._id !== tour._id);
+        } else {
+          updated = [tour, ...wishlistTours];
+        }
+
+        setWishlistTours(updated);
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.wishlistTours,
+          JSON.stringify(updated),
+        );
+      } catch {
+        // keep UI responsive even if storage fails
       }
-
-      setWishlistTours(updated);
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.wishlistTours,
-        JSON.stringify(updated)
-      );
-    } catch {
-      // keep UI responsive even if storage fails
-    }
-  }, [wishlistTours]);
+    },
+    [wishlistTours],
+  );
 
   const renderStars = (rating: number) => (
     <View style={{ flexDirection: "row" }}>
@@ -340,14 +382,17 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.headerWrapper}>
           {/* Static Bottom Layer (The "current" image) */}
-          <Image 
-            source={{ uri: BACKGROUND_IMAGES[currentBg] }} 
-            style={styles.headerImage} 
+          <Image
+            source={{ uri: BACKGROUND_IMAGES[currentBg] }}
+            style={styles.headerImage}
           />
           {/* Animated Top Layer (The "next" image fading in) */}
           <Animated.Image
             source={{ uri: BACKGROUND_IMAGES[nextBg] }}
-            style={[styles.headerImage, { position: 'absolute', opacity: fadeAnim }]}
+            style={[
+              styles.headerImage,
+              { position: "absolute", opacity: fadeAnim },
+            ]}
           />
           <View style={styles.headerOverlay} />
         </View>
@@ -420,12 +465,12 @@ export default function HomeScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <TourCard 
-              item={item} 
-              wishlistIds={wishlistIds} 
-              toggleWishlist={toggleWishlist} 
-              router={router} 
-              DEFAULT_IMAGE={DEFAULT_IMAGE} 
+            <TourCard
+              item={item}
+              wishlistIds={wishlistIds}
+              toggleWishlist={toggleWishlist}
+              router={router}
+              DEFAULT_IMAGE={DEFAULT_IMAGE}
             />
           )}
         />
@@ -434,18 +479,22 @@ export default function HomeScreen() {
       <View style={styles.featureSection}>
         <View style={styles.featureHeader}>
           <Text style={styles.featureTitle}>Featured Tours</Text>
-          <TouchableOpacity onPress={() => setShowAllFeatured(!showAllFeatured)}>
-            <Text style={styles.seeAll}>{showAllFeatured ? "Show Less" : "See All"}</Text>
+          <TouchableOpacity
+            onPress={() => setShowAllFeatured(!showAllFeatured)}
+          >
+            <Text style={styles.seeAll}>
+              {showAllFeatured ? "Show Less" : "See All"}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {filteredDestinations.slice(0, showAllFeatured ? undefined : 3).map((tour) => (
-          <FeaturedTourCard 
-            key={tour._id} 
-            tour={tour} 
-            showAllFeatured={showAllFeatured} 
-            router={router} 
-            DEFAULT_IMAGE={DEFAULT_IMAGE} 
+        {featuredTours.map((tour) => (
+          <FeaturedTourCard
+            key={tour._id}
+            tour={tour}
+            showAllFeatured={showAllFeatured}
+            router={router}
+            DEFAULT_IMAGE={DEFAULT_IMAGE}
           />
         ))}
 
@@ -566,38 +615,38 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 2,
   },
-  tourTitle: { 
-    fontSize: 16, 
-    fontWeight: "700", 
-    color: "#1F2937" 
+  tourTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
   },
   locRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
   },
-  tourSub: { 
-    color: "#6B7280", 
-    fontSize: 13 
+  tourSub: {
+    color: "#6B7280",
+    fontSize: 13,
   },
   cardBottomRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  priceRow: { 
-    flexDirection: "row", 
+  priceRow: {
+    flexDirection: "row",
     alignItems: "baseline",
     gap: 2,
   },
-  newPrice: { 
-    fontSize: 17, 
-    fontWeight: "800", 
-    color: "#1E3A8A" 
+  newPrice: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#1E3A8A",
   },
-  per: { 
-    fontSize: 11, 
-    color: "#9CA3AF" 
+  per: {
+    fontSize: 11,
+    color: "#9CA3AF",
   },
   ratingBadge: {
     flexDirection: "row",
