@@ -16,9 +16,11 @@ const getTourFilter = (tourId) => {
 };
 
 const getTours = async ({ search, page = 1, limit = 10 } = {}) => {
-  const filter = search
-    ? { $text: { $search: String(search) } }
-    : {};
+  const filter = { status: "approved" };
+
+  if (search) {
+    filter.$text = { $search: String(search) };
+  }
 
   const skip = (page - 1) * limit;
 
@@ -31,7 +33,7 @@ const getTours = async ({ search, page = 1, limit = 10 } = {}) => {
 };
 
 const getTourById = async (tourId) => {
-  const tour = await Tour.findOne(getTourFilter(tourId)).lean();
+  const tour = await Tour.findOne({ ...getTourFilter(tourId), status: "approved" }).lean();
   if (!tour) {
     throw new ApiError(404, "Tour package not found");
   }

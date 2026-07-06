@@ -44,8 +44,11 @@ const demoEvents = [
 ];
   
 
+const DEFAULT_EVENT_IMAGE =
+  "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800&q=80&auto=format";
+
 const pickImage = (images = []) => {
-  if (!Array.isArray(images) || images.length === 0) return "";
+  if (!Array.isArray(images) || images.length === 0) return DEFAULT_EVENT_IMAGE;
 
   const sortedImages = [...images].sort((a, b) => {
     const aPixels = Number(a.width || 0) * Number(a.height || 0);
@@ -53,7 +56,7 @@ const pickImage = (images = []) => {
     return bPixels - aPixels;
   });
 
-  return sortedImages[0]?.url || "";
+  return sortedImages[0]?.url || DEFAULT_EVENT_IMAGE;
 };
 
 const mapTicketmasterEvent = (event) => {

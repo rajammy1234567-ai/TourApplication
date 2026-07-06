@@ -58,8 +58,12 @@ exports.register = async (req, res) => {
       password: hashed,
     });
 
+    const token = createToken(user._id);
+
     res.json({
+      success: true,
       msg: "User registered successfully",
+      token,
       user: toSafeUser(user),
     });
 

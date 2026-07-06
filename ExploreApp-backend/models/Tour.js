@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+// Tour packages — vendor-owned listings appear after admin approval
+
 const tourSchema = new mongoose.Schema(
   {
     title: {
@@ -33,6 +35,26 @@ const tourSchema = new mongoose.Schema(
       min: 0,
     },
     gallery: [String],
+    description: String,
+    category: {
+      type: String,
+      enum: ["Beach", "Mountain", "City", "Adventure", "Cultural", "Wildlife", "Other"],
+      default: "Other",
+    },
+    amenities: [String],
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vendor",
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "approved",
+      index: true,
+    },
+    latitude: Number,
+    longitude: Number,
   },
   { timestamps: true }
 );
