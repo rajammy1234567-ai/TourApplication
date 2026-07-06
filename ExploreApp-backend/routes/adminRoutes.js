@@ -9,6 +9,7 @@ const {
   getUsers,
   deleteUser,
   getVendors,
+  getVendorDetail,
   toggleVendor,
   resetVendorPassword,
   updateListingStatus,
@@ -33,6 +34,7 @@ router.get("/users", getUsers);
 router.delete("/users/:id", deleteUser);
 
 router.get("/vendors", getVendors);
+router.get("/vendors/:id", getVendorDetail);
 router.patch("/vendors/:id/status", toggleVendor);
 router.patch("/vendors/:id/password", resetVendorPassword);
 

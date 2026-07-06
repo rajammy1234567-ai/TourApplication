@@ -55,6 +55,11 @@ exports.getVendors = asyncHandler(async (req, res) => {
   res.json({ success: true, vendors });
 });
 
+exports.getVendorDetail = asyncHandler(async (req, res) => {
+  const detail = await adminService.getVendorDetail(req.params.id);
+  res.json({ success: true, ...detail });
+});
+
 exports.toggleVendor = asyncHandler(async (req, res) => {
   const vendor = await adminService.toggleVendorStatus(req.params.id, req.body.isActive);
   res.json({ success: true, vendor });

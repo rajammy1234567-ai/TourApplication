@@ -11,6 +11,130 @@ const Event = require("../models/Events");
 const ApiError = require("../utils/ApiError");
 const { signAdminToken } = require("../utils/tokens");
 const { createUserNotification } = require("./notificationService");
+const vendorService = require("./vendorService");
+
+const buildVendorStats = (tours = [], hotels = [], bookings = { tourBookings: [], hotelBookings: [], all: [], upcoming: [], completed: [] }) => {
+  const tourRevenue = bookings.tourBookings.reduce((sum, b) => sum + (b.paidAmount || 0), 0);
+  const hotelRevenue = bookings.hotelBookings.reduce((sum, b) => sum + (b.paidAmount || 0), 0);
+
+  return {
+    tours: tours.length,
+    toursApproved: tours.filter((item) => item.status === "approved").length,
+    toursPending: tours.filter((item) => item.status === "pending").length,
+    toursRejected: tours.filter((item) => item.status === "rejected").length,
+    hotels: hotels.length,
+    hotelsApproved: hotels.filter((item) => item.status === "approved").length,
+    hotelsPending: hotels.filter((item) => item.status === "pending").length,
+    hotelsRejected: hotels.filter((item) => item.status === "rejected").length,
+    tourBookings: bookings.tourBookings.length,
+    hotelBookings: bookings.hotelBookings.length,
+    totalBookings: bookings.all.length,
+    upcomingBookings: bookings.upcoming.length,
+    completedBookings: bookings.completed.length,
+    tourRevenue,
+    hotelRevenue,
+    totalRevenue: tourRevenue + hotelRevenue,
+  };
+};
+
+const attachVendorStats = async (vendors) => {
+  if (!vendors.length) return [];
+
+  const vendorIds = vendors.map((vendor) => vendor._id);
+
+  const [tourAgg, hotelAgg, vendorTours, vendorHotels] = await Promise.all([
+    Tour.aggregate([
+      { $match: { vendorId: { $in: vendorIds } } },
+      {
+        $group: {
+          _id: "$vendorId",
+          total: { $sum: 1 },
+          approved: { $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+        },
+      },
+    ]),
+    Hotel.aggregate([
+      { $match: { vendorId: { $in: vendorIds } } },
+      {
+        $group: {
+          _id: "$vendorId",
+          total: { $sum: 1 },
+          approved: { $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+        },
+      },
+    ]),
+    Tour.find({ vendorId: { $in: vendorIds } }).select("_id vendorId").lean(),
+    Hotel.find({ vendorId: { $in: vendorIds } }).select("_id vendorId").lean(),
+  ]);
+
+  const tourMap = Object.fromEntries(tourAgg.map((row) => [String(row._id), row]));
+  const hotelMap = Object.fromEntries(hotelAgg.map((row) => [String(row._id), row]));
+  const tourIdToVendor = Object.fromEntries(vendorTours.map((tour) => [String(tour._id), String(tour.vendorId)]));
+  const hotelIdToVendor = Object.fromEntries(vendorHotels.map((hotel) => [String(hotel._id), String(hotel.vendorId)]));
+
+  const bookingStatsByVendor = Object.fromEntries(
+    vendorIds.map((id) => [
+      String(id),
+      { tourBookings: 0, hotelBookings: 0, totalRevenue: 0 },
+    ])
+  );
+
+  const [tourBookings, hotelBookings] = await Promise.all([
+    vendorTours.length
+      ? Booking.find({ tourId: { $in: vendorTours.map((tour) => tour._id) } })
+          .select("tourId paidAmount")
+          .lean()
+      : [],
+    vendorHotels.length
+      ? HotelBooking.find({ hotelId: { $in: vendorHotels.map((hotel) => hotel._id) } })
+          .select("hotelId paidAmount")
+          .lean()
+      : [],
+  ]);
+
+  tourBookings.forEach((booking) => {
+    const vendorKey = tourIdToVendor[String(booking.tourId)];
+    if (!vendorKey || !bookingStatsByVendor[vendorKey]) return;
+    bookingStatsByVendor[vendorKey].tourBookings += 1;
+    bookingStatsByVendor[vendorKey].totalRevenue += booking.paidAmount || 0;
+  });
+
+  hotelBookings.forEach((booking) => {
+    const vendorKey = hotelIdToVendor[String(booking.hotelId)];
+    if (!vendorKey || !bookingStatsByVendor[vendorKey]) return;
+    bookingStatsByVendor[vendorKey].hotelBookings += 1;
+    bookingStatsByVendor[vendorKey].totalRevenue += booking.paidAmount || 0;
+  });
+
+  return vendors.map((vendor) => {
+    const vendorKey = String(vendor._id);
+    const tourStats = tourMap[vendorKey] || { total: 0, approved: 0, pending: 0 };
+    const hotelStats = hotelMap[vendorKey] || { total: 0, approved: 0, pending: 0 };
+    const bookingStats = bookingStatsByVendor[vendorKey] || {
+      tourBookings: 0,
+      hotelBookings: 0,
+      totalRevenue: 0,
+    };
+
+    return {
+      ...vendor,
+      stats: {
+        tours: tourStats.total,
+        toursApproved: tourStats.approved,
+        toursPending: tourStats.pending,
+        hotels: hotelStats.total,
+        hotelsApproved: hotelStats.approved,
+        hotelsPending: hotelStats.pending,
+        tourBookings: bookingStats.tourBookings,
+        hotelBookings: bookingStats.hotelBookings,
+        totalBookings: bookingStats.tourBookings + bookingStats.hotelBookings,
+        totalRevenue: bookingStats.totalRevenue,
+      },
+    };
+  });
+};
 
 const toSafeAdmin = (admin) => ({
   _id: admin._id,
@@ -193,7 +317,50 @@ const getAllUsers = async () => {
 };
 
 const getAllVendors = async () => {
-  return Vendor.find().select("-password").sort({ createdAt: -1 }).lean();
+  const vendors = await Vendor.find()
+    .select("-password")
+    .populate("userId", "fullname email phone")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return attachVendorStats(vendors);
+};
+
+const getVendorDetail = async (vendorId) => {
+  const vendor = await Vendor.findById(vendorId)
+    .select("-password")
+    .populate("userId", "fullname email phone")
+    .populate("approvedBy", "name email")
+    .lean();
+
+  if (!vendor) {
+    throw new ApiError(404, "Vendor not found");
+  }
+
+  const [application, tours, hotels, bookings] = await Promise.all([
+    VendorApplication.findOne({
+      userId: vendor.userId,
+      status: "approved",
+    })
+      .select("+vendorLoginPassword")
+      .populate("reviewedBy", "name email")
+      .sort({ reviewedAt: -1, createdAt: -1 })
+      .lean(),
+    vendorService.getVendorTours(vendorId),
+    Hotel.find({ vendorId }).sort({ createdAt: -1 }).lean(),
+    vendorService.getVendorBookings(vendorId),
+  ]);
+
+  const stats = buildVendorStats(tours, hotels, bookings);
+
+  return {
+    vendor,
+    application,
+    tours,
+    hotels,
+    bookings: bookings.all,
+    stats,
+  };
 };
 
 const toggleVendorStatus = async (vendorId, isActive) => {
@@ -300,11 +467,17 @@ const getAllBookings = async () => {
 };
 
 const getAllTours = async () => {
-  return Tour.find().sort({ createdAt: -1 }).lean();
+  return Tour.find()
+    .populate("vendorId", "businessName ownerName phone")
+    .sort({ createdAt: -1 })
+    .lean();
 };
 
 const getAllHotels = async () => {
-  return Hotel.find().sort({ createdAt: -1 }).lean();
+  return Hotel.find()
+    .populate("vendorId", "businessName ownerName phone")
+    .sort({ createdAt: -1 })
+    .lean();
 };
 
 const deleteUser = async (userId) => {
@@ -324,6 +497,7 @@ module.exports = {
   rejectVendorApplication,
   getAllUsers,
   getAllVendors,
+  getVendorDetail,
   toggleVendorStatus,
   resetVendorPassword,
   updateListingStatus,
