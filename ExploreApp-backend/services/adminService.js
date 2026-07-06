@@ -10,6 +10,7 @@ const HotelBooking = require("../models/HotelBooking");
 const Event = require("../models/Events");
 const ApiError = require("../utils/ApiError");
 const { signAdminToken } = require("../utils/tokens");
+const { createUserNotification } = require("./notificationService");
 
 const toSafeAdmin = (admin) => ({
   _id: admin._id,
@@ -89,7 +90,9 @@ const getDashboardStats = async () => {
 const getVendorApplications = async (status) => {
   const filter = status ? { status } : {};
   return VendorApplication.find(filter)
+    .select("+vendorLoginPassword")
     .populate("userId", "fullname email phone")
+    .populate("reviewedBy", "name email")
     .sort({ createdAt: -1 })
     .lean();
 };
@@ -133,7 +136,17 @@ const approveVendorApplication = async (applicationId, adminId, password) => {
   application.status = "approved";
   application.reviewedBy = adminId;
   application.reviewedAt = new Date();
+  application.vendorLoginPassword = password;
   await application.save();
+
+  await createUserNotification({
+    userId: application.userId,
+    type: "vendor_approved",
+    title: "Partner application approved",
+    body: `Your business "${application.businessName}" is approved. Download the Vendor app and login with phone ${application.phone}.`,
+    link: "/becomeVendor",
+    meta: { applicationId: application._id, phone: application.phone },
+  });
 
   return {
     vendor: {
@@ -160,6 +173,17 @@ const rejectVendorApplication = async (applicationId, adminId, adminNotes) => {
   application.reviewedBy = adminId;
   application.reviewedAt = new Date();
   await application.save();
+
+  await createUserNotification({
+    userId: application.userId,
+    type: "vendor_rejected",
+    title: "Partner application update",
+    body: adminNotes
+      ? `Your application for "${application.businessName}" was not approved. ${adminNotes}`
+      : `Your application for "${application.businessName}" was not approved. You can submit again with updated details.`,
+    link: "/becomeVendor",
+    meta: { applicationId: application._id },
+  });
 
   return application;
 };
@@ -200,6 +224,23 @@ const resetVendorPassword = async (vendorId, password) => {
   if (!vendor) {
     throw new ApiError(404, "Vendor not found");
   }
+
+  await VendorApplication.updateMany(
+    { userId: vendor.userId, status: "approved" },
+    { vendorLoginPassword: password }
+  );
+
+  if (vendor.userId) {
+    await createUserNotification({
+      userId: vendor.userId,
+      type: "vendor_password",
+      title: "Vendor password updated",
+      body: `Your vendor login password was updated by admin. Open Partner Application to view your new credentials.`,
+      link: "/becomeVendor",
+      meta: { vendorId: vendor._id },
+    });
+  }
+
   return vendor;
 };
 

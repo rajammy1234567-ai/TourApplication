@@ -8,6 +8,7 @@ const HotelBooking = require("../models/HotelBooking");
 const User = require("../models/User");
 const ApiError = require("../utils/ApiError");
 const { signVendorToken } = require("../utils/tokens");
+const { createUserNotification } = require("./notificationService");
 
 const formatDate = (d) => (d ? new Date(d).toISOString() : null);
 
@@ -364,7 +365,7 @@ const submitApplication = async (userId, data) => {
     throw new ApiError(400, "You are already an approved vendor");
   }
 
-  return VendorApplication.create({
+  const application = await VendorApplication.create({
     userId,
     businessName,
     ownerName,
@@ -377,10 +378,32 @@ const submitApplication = async (userId, data) => {
     gstNumber,
     description,
   });
+
+  await createUserNotification({
+    userId,
+    type: "vendor_submitted",
+    title: "Application submitted",
+    body: `Your partner application for "${businessName}" was sent to admin. We'll notify you when it's reviewed.`,
+    link: "/becomeVendor",
+    meta: { applicationId: application._id },
+  });
+
+  return application;
 };
 
 const getMyApplication = async (userId) => {
-  return VendorApplication.findOne({ userId }).sort({ createdAt: -1 }).lean();
+  const application = await VendorApplication.findOne({ userId })
+    .sort({ createdAt: -1 })
+    .select("+vendorLoginPassword")
+    .lean();
+
+  if (!application) return null;
+
+  if (application.status !== "approved") {
+    delete application.vendorLoginPassword;
+  }
+
+  return application;
 };
 
 const vendorLogin = async (phone, password) => {

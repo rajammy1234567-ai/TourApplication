@@ -7,6 +7,7 @@ const { assertRazorpayEnv } = require("../config/env");
 const { getTourById } = require("./tourService");
 const { createInvoiceForBooking } = require("./invoiceService");
 const ApiError = require("../utils/ApiError");
+const { createUserNotification } = require("./notificationService");
 
 const CURRENCY = "INR";
 const ADVANCE_PERCENTAGE = 0.1;
@@ -246,6 +247,15 @@ const verifyPaymentAndCreateBooking = async ({
 
     // 📄 Create Invoice automatically
     const invoice = await createInvoiceForBooking(booking);
+
+    await createUserNotification({
+      userId: authenticatedUserId,
+      type: "booking_tour",
+      title: "Tour booking confirmed",
+      body: `Your booking for "${tour.title}" is confirmed. Check My Bookings for trip details.`,
+      link: "/myBookings",
+      meta: { bookingId: booking._id, tourId: tour._id },
+    });
 
     return { booking, invoice, alreadyConfirmed: false };
   } catch (error) {

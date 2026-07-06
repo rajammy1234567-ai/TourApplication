@@ -1,6 +1,7 @@
 const Hotel = require("../models/Hotel");
 const HotelBooking = require("../models/HotelBooking");
 const ApiError = require("../utils/ApiError");
+const { createUserNotification } = require("./notificationService");
 
 const createHotelBooking = async (userId, data) => {
   const {
@@ -58,6 +59,15 @@ const createHotelBooking = async (userId, data) => {
     paidAmount,
     bookingStatus: "Confirmed",
     paymentStatus: "Paid",
+  });
+
+  await createUserNotification({
+    userId,
+    type: "booking_hotel",
+    title: "Hotel booking confirmed",
+    body: `Your stay at ${hotel.title} is confirmed from ${checkInDate.toLocaleDateString("en-IN")} to ${checkOutDate.toLocaleDateString("en-IN")}.`,
+    link: "/myBookings",
+    meta: { bookingId: booking._id, hotelId: hotel._id },
   });
 
   return HotelBooking.findById(booking._id)

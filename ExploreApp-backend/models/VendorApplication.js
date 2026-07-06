@@ -29,6 +29,10 @@ const vendorApplicationSchema = new mongoose.Schema(
       index: true,
     },
     adminNotes: { type: String, trim: true },
+    vendorLoginPassword: {
+      type: String,
+      select: false,
+    },
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
     reviewedAt: Date,
   },
