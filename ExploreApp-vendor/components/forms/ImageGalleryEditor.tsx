@@ -60,7 +60,8 @@ export function ImageGalleryEditor({
 
     setUploading(true);
     try {
-      const url = await uploadImage(result.assets[0].uri);
+      const asset = result.assets[0];
+      const url = await uploadImage(asset.uri, asset.mimeType);
       if (forCover) {
         onCoverChange(url);
       } else {

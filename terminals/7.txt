@@ -3,7 +3,7 @@ pid: 11164
 cwd: "D:\Programming\Explore"
 command: "cd \"D:\\Programming\\Explore\\ExploreApp-backend\"; npm run dev"
 started_at: 2026-07-06T09:59:21.999Z
-running_for_ms: 7209986  
+running_for_ms: 8114990  
 ---
 
 > exploreapp-backend@1.0.0 dev
@@ -132,6 +132,33 @@ Server is running on http://localhost:5000
 [nodemon] restarting due to changes...
 [nodemon] starting `node server.js`
 ◇ injected env (10) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (10) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Database connected successfully 
+Server is running on http://localhost:5000
+Server error {
+  message: 'Only image files are allowed',
+  stack: 'Error: Only image files are allowed\n' +
+    '    at fileFilter (D:\\Programming\\Explore\\ExploreApp-backend\\services\\uploadService.js:29:8)\n' +
+    '    at wrappedFileFilter (D:\\Programming\\Explore\\ExploreApp-backend\\node_modules\\multer\\index.js:45:7)\n' +
+    '    at Multipart.<anonymous> (D:\\Programming\\Explore\\ExploreApp-backend\\node_modules\\multer\\lib\\make-middleware.js:183:7)\n' +
+    '    at Multipart.emit (node:events:508:28)\n' +
+    '    at HeaderParser.cb (D:\\Programming\\Explore\\ExploreApp-backend\\node_modules\\busboy\\lib\\types\\multipart.js:358:14)\n' +
+    '    at HeaderParser.push (D:\\Programming\\Explore\\ExploreApp-backend\\node_modules\\busboy\\lib\\types\\multipart.js:162:20)\n' +
+    '    at SBMH.ssCb [as _cb] (D:\\Programming\\Explore\\ExploreApp-backend\\node_modules\\busboy\\lib\\types\\multipart.js:394:37)\n' +
+    '    at feed (D:\\Programming\\Explore\\ExploreApp-backend\\node_modules\\streamsearch\\lib\\sbmh.js:248:10)\n' +
+    '    at SBMH.push (D:\\Programming\\Explore\\ExploreApp-backend\\node_modules\\streamsearch\\lib\\sbmh.js:104:16)\n' +
+    '    at Multipart._write (D:\\Programming\\Explore\\ExploreApp-backend\\node_modules\\busboy\\lib\\types\\multipart.js:567:19)',
+  path: '/api/vendor/upload',
+  method: 'POST'
+}
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (10) from .env // tip: ⌘ override existing { override: true }
 Database connected successfully 
 Server is running on http://localhost:5000
 [nodemon] restarting due to changes...

@@ -18,21 +18,52 @@ const storage = multer.diskStorage({
   },
 });
 
+const IMAGE_EXTENSIONS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".gif",
+  ".heic",
+  ".heif",
+]);
+
+const isAllowedImage = (file) => {
+  if (file.mimetype?.startsWith("image/")) return true;
+
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  if (IMAGE_EXTENSIONS.has(ext)) return true;
+
+  // React Native / Expo often sends application/octet-stream without a reliable mimetype.
+  if (
+    (!file.mimetype || file.mimetype === "application/octet-stream") &&
+    IMAGE_EXTENSIONS.has(ext)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype?.startsWith("image/")) {
+    if (isAllowedImage(file)) {
       cb(null, true);
       return;
     }
-    cb(new Error("Only image files are allowed"));
+    cb(new Error("Only image files are allowed (jpg, png, webp, gif)"));
   },
 });
 
 const uploadMiddleware = upload;
 
 const buildPublicUrl = (req, filename) => {
+  if (process.env.PUBLIC_API_URL) {
+    return `${process.env.PUBLIC_API_URL.replace(/\/$/, "")}/uploads/${filename}`;
+  }
+
   const host = req.get("host");
   const protocol = req.protocol || "http";
   return `${protocol}://${host}/uploads/${filename}`;
