@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -9,21 +9,22 @@ import {
   Share,
 } from "react-native";
 import { Image } from "expo-image";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { AppScreen } from "../components/explore/AppScreen";
+import { useAppInsets } from "../hooks/use-app-insets";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 
 import MapComponent from "../components/MapComponent";
+import { SafeImage } from "../components/explore/SafeImage";
+import { apiUrl } from "../constants/api";
+import { DEFAULT_TOUR_IMAGE, ExploreColors, formatINR } from "../constants/exploreTheme";
 
 const getParam = (value: string | string[] | undefined, fallback = "") =>
   Array.isArray(value) ? value[0] || fallback : value || fallback;
 
 export default function TourDetails() {
   const params = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
+  const { overlayTop, footerBottomPad } = useAppInsets();
   const [liked, setLiked] = useState(false);
 
   // 👇 NEW STATE FOR ITINERARY
@@ -134,36 +135,51 @@ export default function TourDetails() {
     return generalImages;
   };
 
+  const [apiTour, setApiTour] = useState<any>(null);
+
+  const tourId = getParam(params.tourId, getParam(params.packageId));
+
+  useEffect(() => {
+    if (!tourId) return;
+    fetch(apiUrl(`/api/tours/${tourId}`))
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data?.tour) setApiTour(data.tour);
+      })
+      .catch(() => {});
+  }, [tourId]);
+
   const tour = useMemo(() => {
+    const source = apiTour || {};
     return {
-      tourId: getParam(params.tourId, getParam(params.packageId)),
-      packageId: getParam(params.packageId),
-      title: getParam(params.title, "Tour Package"),
-      image: getParam(
-        params.image,
-        "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
-      ),
-      rating: getParam(params.rating, "4.5"),
+      tourId: tourId || source._id || "",
+      packageId: source.packageId || getParam(params.packageId),
+      title: source.title || getParam(params.title, "Tour Package"),
+      image: source.image || source.gallery?.[0] || getParam(params.image, DEFAULT_TOUR_IMAGE),
+      rating: String(source.rating ?? getParam(params.rating, "4.5")),
       reviews: getParam(params.reviews, "0"),
-      duration: getParam(params.duration, "TBA"),
-      people: getParam(params.people, "Contact for details"),
+      duration: source.duration || getParam(params.duration, "TBA"),
+      people: source.people || getParam(params.people, "Contact for details"),
       language: "English",
-      price: getParam(params.price, "15000"),
-      locationName: getParam(
-        params.locationName,
-        getParam(params.location, "Location TBA"),
-      ),
-      latitude: parseFloat(getParam(params.latitude)) || 69.6492,
-      longitude: parseFloat(getParam(params.longitude)) || 18.9553,
+      price: String(source.price ?? getParam(params.price, "15000")),
+      locationName:
+        source.location ||
+        getParam(params.locationName, getParam(params.location, "Location TBA")),
+      latitude: parseFloat(String(source.latitude ?? getParam(params.latitude))) || 28.6139,
+      longitude: parseFloat(String(source.longitude ?? getParam(params.longitude))) || 77.209,
+      description: source.description || "",
+      gallery: source.gallery?.length
+        ? source.gallery
+        : [source.image || getParam(params.image, DEFAULT_TOUR_IMAGE), ...getDynamicGallery(source.title || "").slice(0, 3)],
     };
-  }, [params]);
+  }, [params, apiTour, tourId]);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <AppScreen variant="hero" style={styles.safe}>
       <View style={styles.container}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 100 + footerBottomPad }}
         >
           {/* HERO IMAGE */}
           <View style={styles.imageWrap}>
@@ -174,7 +190,7 @@ export default function TourDetails() {
               transition={300}
             />
 
-            <View style={styles.topRow}>
+            <View style={[styles.topRow, { top: overlayTop }]}>
               <TouchableOpacity
                 style={styles.circleBtn}
                 onPress={() => router.back()}
@@ -200,23 +216,20 @@ export default function TourDetails() {
               </View>
             </View>
 
-            <View style={styles.thumbRow}>
-              <Image
-                source={{ uri: tour.image }}
-                style={styles.thumb}
-                contentFit="cover"
-                transition={200}
-              />
-              <Image
-                source={{ uri: tour.image }}
-                style={styles.thumb}
-                contentFit="cover"
-                transition={200}
-              />
-              <View style={[styles.thumb, styles.more]}>
-                <Text style={{ color: "#fff" }}>+5</Text>
+            {(tour.gallery || []).length > 1 ? (
+              <View style={styles.thumbRow}>
+                {(tour.gallery || []).slice(0, 3).map((img: string, index: number) => (
+                  <SafeImage
+                    key={`${img}-${index}`}
+                    uri={img}
+                    fallback={DEFAULT_TOUR_IMAGE}
+                    style={styles.thumb}
+                    contentFit="cover"
+                    transition={200}
+                  />
+                ))}
               </View>
-            </View>
+            ) : null}
           </View>
 
           {/* CONTENT */}
@@ -248,8 +261,8 @@ export default function TourDetails() {
             {/* OVERVIEW */}
             <Text style={styles.section}>Overview</Text>
             <Text style={styles.desc}>
-              Experience the magic of the Arctic in the heart of Northern
-              Norway...
+              {tour.description ||
+                `Discover ${tour.title} in ${tour.locationName}. A curated experience with guided activities, comfortable stays, and memorable moments.`}
             </Text>
 
             {/* GALLERY SECTION */}
@@ -259,7 +272,7 @@ export default function TourDetails() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.galleryScroll}
             >
-              {getDynamicGallery(tour.title).map(
+              {(tour.gallery || getDynamicGallery(tour.title)).map(
                 (img: string, index: number) => (
                   <View key={index} style={styles.galleryItem}>
                     <Image
@@ -288,7 +301,7 @@ export default function TourDetails() {
               <TouchableOpacity
                 onPress={() => setShowAllItinerary(!showAllItinerary)}
               >
-                <Text style={{ color: "#0F3B82", fontWeight: "600" }}>
+                <Text style={{ color: ExploreColors.primary, fontWeight: "600" }}>
                   {showAllItinerary ? "Show less" : "See all"}
                 </Text>
               </TouchableOpacity>
@@ -321,32 +334,23 @@ export default function TourDetails() {
               />
             </View>
 
-            {/* PACKAGES SECTION */}
-            <Text style={styles.section}>Packages</Text>
-
-            {packagesData.map((pkg) => (
-              <TouchableOpacity key={pkg.id} style={styles.packageCard}>
-                <View>
-                  <Text style={styles.pkgTitle}>{pkg.name}</Text>
-                  <Text style={styles.pkgDesc}>{pkg.desc}</Text>
-                </View>
-                <Text style={styles.pkgPrice}>{pkg.price}</Text>
-              </TouchableOpacity>
-            ))}
+            <Text style={styles.section}>Package Price</Text>
+            <View style={styles.packageCard}>
+              <View>
+                <Text style={styles.pkgTitle}>Standard Package</Text>
+                <Text style={styles.pkgDesc}>Per person · taxes extra at checkout</Text>
+              </View>
+              <Text style={styles.pkgPrice}>{formatINR(Number(tour.price) || 0)}</Text>
+            </View>
           </View>
         </ScrollView>
 
         {/* FOOTER */}
-        <View
-          style={[
-            styles.footer,
-            { paddingBottom: (insets?.bottom || 10) + 10 },
-          ]}
-        >
+        <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
           <View>
             <Text style={styles.total}>Total Price</Text>
             <Text style={styles.price}>
-              ₹{tour.price} <Text style={styles.per}>/person</Text>
+              {formatINR(Number(tour.price) || 0)} <Text style={styles.per}>/person</Text>
             </Text>
           </View>
           <TouchableOpacity
@@ -370,7 +374,7 @@ export default function TourDetails() {
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 
@@ -383,7 +387,6 @@ const styles = StyleSheet.create({
 
   topRow: {
     position: "absolute",
-    top: 20,
     left: 16,
     right: 16,
     flexDirection: "row",

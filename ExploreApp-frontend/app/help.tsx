@@ -9,7 +9,7 @@ import {
   Linking,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { AppScreen } from "../components/explore/AppScreen";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
@@ -65,7 +65,7 @@ export default function HelpSupport() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <AppScreen variant="stack" style={styles.safe}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color="#0F172A" />
@@ -136,7 +136,7 @@ export default function HelpSupport() {
           <Text style={styles.version}>Version 1.0.4 (Stable)</Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 

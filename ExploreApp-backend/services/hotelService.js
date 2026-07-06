@@ -73,6 +73,14 @@ const getVendorHotels = async (vendorId) => {
   return Hotel.find({ vendorId }).sort({ createdAt: -1 }).lean();
 };
 
+const getVendorHotelById = async (vendorId, hotelId) => {
+  const hotel = await Hotel.findOne({ _id: hotelId, vendorId }).lean();
+  if (!hotel) {
+    throw new ApiError(404, "Hotel listing not found");
+  }
+  return hotel;
+};
+
 module.exports = {
   getHotels,
   getHotelById,
@@ -80,4 +88,5 @@ module.exports = {
   updateHotel,
   deleteHotel,
   getVendorHotels,
+  getVendorHotelById,
 };

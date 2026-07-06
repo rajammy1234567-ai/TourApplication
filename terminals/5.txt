@@ -1,0 +1,12 @@
+---
+pid: 10140
+cwd: "D:\Programming\Explore"
+command: "cd \"D:\\Programming\\Explore\\ExploreApp-backend\"; node -e \"require('./server.js')\" 2>&1 | Select-Object -First 5"
+started_at: 2026-07-04T08:55:19.707Z
+running_for_ms: 2154996  
+---
+◇ injected env (9) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Failed to connect with Database  Error: querySrv ECONNREFUSED _mongodb._tcp.application-tour1.gauomtv.mongodb.net
+    at QueryReqWrap.onresolve [as oncomplete] (node:internal/dns/promises:294:17) {
+  errno: undefined,
+  code: 'ECONNREFUSED',

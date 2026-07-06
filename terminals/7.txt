@@ -1,0 +1,141 @@
+---
+pid: 11164
+cwd: "D:\Programming\Explore"
+command: "cd \"D:\\Programming\\Explore\\ExploreApp-backend\"; npm run dev"
+started_at: 2026-07-06T09:59:21.999Z
+running_for_ms: 7209986  
+---
+
+> exploreapp-backend@1.0.0 dev
+> nodemon server.js
+
+[nodemon] 3.1.14
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): *.*
+[nodemon] watching extensions: js,mjs,cjs,json
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ⌘ override existing { override: true }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ⌘ override existing { override: true }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Database connected successfully 
+Server is running on http://localhost:5000
+(node:12248) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ⌘ override existing { override: true }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ⌘ enable debugging { debug: true }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ⌘ enable debugging { debug: true }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (9) from .env // tip: ⌘ override existing { override: true }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (10) from .env // tip: ⌘ override existing { override: true }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (10) from .env // tip: ⌘ enable debugging { debug: true }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (10) from .env // tip: ⌘ suppress logs { quiet: true }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (10) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (10) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+Database connected successfully 
+Server is running on http://localhost:5000
+[nodemon] restarting due to changes...
+[nodemon] starting `node server.js`
+◇ injected env (10) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Database connected successfully 
+Server is running on http://localhost:5000

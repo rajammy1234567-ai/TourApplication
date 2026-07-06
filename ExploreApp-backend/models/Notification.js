@@ -17,6 +17,8 @@ const notificationSchema = new mongoose.Schema(
         "vendor_password",
         "booking_tour",
         "booking_hotel",
+        "listing_approved",
+        "listing_rejected",
         "general",
       ],
       default: "general",

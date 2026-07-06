@@ -1,0 +1,26 @@
+---
+pid: 18044
+cwd: "D:\Programming\Explore"
+command: "cd \"D:\\Programming\\Explore\\ExploreApp-vendor\"; npx expo install expo-router @react-native-async-storage/async-storage react-native-safe-area-context react-native-screens expo-linking expo-constants @expo/vector-icons react-native-gesture-handler"
+started_at: 2026-07-04T08:52:49.922Z
+running_for_ms: 2294998  
+---
+› Installing 8 SDK 57.0.0 compatible native modules using npm
+> npm install
+npm warn ERESOLVE overriding peer dependency
+
+added 108 packages, removed 4 packages, and audited 572 packages in 26s
+
+43 packages are looking for funding
+  run `npm fund` for details
+
+10 moderate severity vulnerabilities
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+› Added config plugin: expo-router

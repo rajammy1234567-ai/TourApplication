@@ -1,0 +1,37 @@
+---
+pid: 12052
+cwd: "D:\Programming\Explore"
+command: "cd \"D:\\Programming\\Explore\"; npx create-expo-app@latest ExploreApp-vendor --template blank-typescript --yes"
+started_at: 2026-07-04T08:50:16.304Z
+running_for_ms: 2450008  
+---
+Creating ExploreApp-vendor using the blank-typescript template.
+
+- Locating project files.\ Locating project files.| Locating project files./ Locating project files.- Locating project files.\ Locating project files.| Locating project files./ Locating project files.- Locating project files.\ Locating project files.| Locating project files./ Locating project files.- Locating project files.\ Locating project files.| Locating project files.> npm install
+/ Locating project files.√ Downloaded and extracted project files.
+npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 467 packages, and audited 468 packages in 1m
+
+42 packages are looking for funding
+  run `npm fund` for details
+
+10 moderate severity vulnerabilities
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+✅ Your project is ready!
+
+To run your project, navigate to the directory and run one of the following npm commands.
+
+- cd ExploreApp-vendor
+- npm run android
+- npm run ios # you need to use macOS to build the iOS project - use the Expo app if you need to do iOS development without a Mac
+- npm run web
+? You are creating a project inside of an existing Git repository. Skip initializing a new git repository? » (Y/n)

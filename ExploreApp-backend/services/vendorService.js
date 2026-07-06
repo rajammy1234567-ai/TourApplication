@@ -482,6 +482,14 @@ const getVendorTours = async (vendorId) => {
   return Tour.find({ vendorId }).sort({ createdAt: -1 }).lean();
 };
 
+const getVendorTourById = async (vendorId, tourId) => {
+  const tour = await Tour.findOne({ _id: tourId, vendorId }).lean();
+  if (!tour) {
+    throw new ApiError(404, "Tour listing not found");
+  }
+  return tour;
+};
+
 const getVendorTourBookings = async (vendorId) => {
   const { tourIds } = await getVendorListingIds(vendorId);
   if (!tourIds.length) return [];
@@ -664,6 +672,7 @@ module.exports = {
   updateTour,
   deleteTour,
   getVendorTours,
+  getVendorTourById,
   getVendorDashboard,
   getVendorBookings,
   getVendorActivity,

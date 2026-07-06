@@ -1,0 +1,22 @@
+---
+pid: 19464
+cwd: "D:\Programming\Explore"
+command: "cd \"D:\\Programming\\Explore\\ExploreApp-vendor\"; npm install --legacy-peer-deps"
+started_at: 2026-07-04T08:55:27.524Z
+running_for_ms: 2140000  
+---
+
+added 46 packages, removed 41 packages, changed 7 packages, and audited 577 packages in 19s
+
+45 packages are looking for funding
+  run `npm fund` for details
+
+12 moderate severity vulnerabilities
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.

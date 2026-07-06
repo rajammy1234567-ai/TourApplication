@@ -11,6 +11,7 @@ const { createUserNotification } = require("./notificationService");
 
 const CURRENCY = "INR";
 const ADVANCE_PERCENTAGE = 0.1;
+const PAYMENT_ENV_KEYS = ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"];
 
 const toRupees = (value) => {
   if (typeof value === "number") return value;
@@ -89,9 +90,10 @@ const assertSameUser = (payloadUserId, authenticatedUserId) => {
   }
 };
 
+const isDemoBookingEnabled = () => process.env.ALLOW_DEMO_BOOKING === "true";
+
 const createOrder = async ({ tourId, userId, authenticatedUserId, bookingDetails }) => {
   assertSameUser(userId, authenticatedUserId);
-  assertRazorpayEnv();
 
   if (!tourId) {
     throw new ApiError(400, "tourId is required");
@@ -99,6 +101,25 @@ const createOrder = async ({ tourId, userId, authenticatedUserId, bookingDetails
 
   const tour = await getTourById(tourId);
   const normalizedBookingDetails = normalizeBookingDetails(bookingDetails);
+
+  const missingPayment = PAYMENT_ENV_KEYS.filter((key) => !process.env[key]);
+  if (missingPayment.length && isDemoBookingEnabled()) {
+    const { totalAmount, paidAmount, remainingAmount } = getPaymentBreakdown(
+      tour.price,
+      normalizedBookingDetails
+    );
+    return {
+      demoMode: true,
+      tourId: String(tour._id),
+      packageName: tour.title,
+      totalAmount,
+      paidAmount,
+      remainingAmount,
+      bookingDetails: normalizedBookingDetails,
+    };
+  }
+
+  assertRazorpayEnv();
   const { totalAmount, paidAmount, remainingAmount, razorpayAmount } =
     getPaymentBreakdown(tour.price, normalizedBookingDetails);
 
@@ -266,4 +287,52 @@ const verifyPaymentAndCreateBooking = async ({
   }
 };
 
-module.exports = { createOrder, verifyPaymentAndCreateBooking };
+const createDemoTourBooking = async ({ tourId, authenticatedUserId, bookingDetails }) => {
+  if (!isDemoBookingEnabled()) {
+    throw new ApiError(403, "Demo booking is disabled");
+  }
+
+  if (!tourId) {
+    throw new ApiError(400, "tourId is required");
+  }
+
+  const tour = await getTourById(tourId);
+  const normalizedBookingDetails = normalizeBookingDetails(bookingDetails);
+  const { totalAmount, paidAmount, remainingAmount } = getPaymentBreakdown(
+    tour.price,
+    normalizedBookingDetails
+  );
+
+  const booking = await Booking.create({
+    userId: authenticatedUserId,
+    tourId: tour._id,
+    packageIdSnapshot: tour.packageId,
+    packageName: tour.title,
+    startDate: normalizedBookingDetails.startDate,
+    endDate: normalizedBookingDetails.endDate,
+    travelers: normalizedBookingDetails.travelers,
+    children: normalizedBookingDetails.children,
+    meal: normalizedBookingDetails.meal,
+    photo: normalizedBookingDetails.photo,
+    room: normalizedBookingDetails.room,
+    totalAmount,
+    paidAmount,
+    remainingAmount,
+    paymentStatus: "Paid",
+    bookingStatus: "Confirmed",
+    razorpayPaymentId: `demo_${Date.now()}`,
+  });
+
+  await createUserNotification({
+    userId: authenticatedUserId,
+    type: "booking_tour",
+    title: "Tour booking confirmed",
+    body: `Your booking for "${tour.title}" is confirmed. Check My Bookings for trip details.`,
+    link: "/myBookings",
+    meta: { bookingId: booking._id, tourId: tour._id, demo: true },
+  });
+
+  return booking;
+};
+
+module.exports = { createOrder, verifyPaymentAndCreateBooking, createDemoTourBooking };

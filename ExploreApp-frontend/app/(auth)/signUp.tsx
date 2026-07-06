@@ -154,7 +154,7 @@ export default function SignupScreen() {
       }
 
       Alert.alert("Success", "Registered successfully.");
-      router.replace("/login");
+      router.replace(token ? "/(tabs)/home" : "/(auth)/login");
     } catch {
       Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
@@ -164,7 +164,7 @@ export default function SignupScreen() {
 
   return (
     <LinearGradient colors={["#F0F7FF", "#E8F4FF", "#F5F5F5"]} style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>

@@ -1,0 +1,14 @@
+---
+pid: 15384
+cwd: "D:\Programming\Explore"
+command: "cd \"D:\\Programming\\Explore\\ExploreApp-admin\"; npm install"
+started_at: 2026-07-04T08:50:33.734Z
+running_for_ms: 2430000  
+---
+
+added 27 packages, and audited 28 packages in 20s
+
+9 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities

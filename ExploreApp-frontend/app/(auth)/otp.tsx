@@ -1,12 +1,18 @@
-import { View, Text } from 'react-native'
-import React from 'react'
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { AppScreen } from "../../components/explore/AppScreen";
 
-const otp = () => {
+export default function OtpScreen() {
   return (
-    <View>
-      <Text>otp</Text>
-    </View>
-  )
+    <AppScreen variant="auth">
+      <View style={styles.center}>
+        <Text style={styles.text}>OTP verification</Text>
+      </View>
+    </AppScreen>
+  );
 }
 
-export default otp
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  text: { fontSize: 18, fontWeight: "600", color: "#0F172A" },
+});

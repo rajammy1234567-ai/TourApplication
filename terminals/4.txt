@@ -1,0 +1,65 @@
+---
+pid: 8624
+cwd: "D:\Programming\Explore"
+command: "cd \"D:\\Programming\\Explore\\ExploreApp-vendor\"; npm install"
+started_at: 2026-07-04T08:55:01.318Z
+running_for_ms: 2165002  
+---
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: react-dom@19.2.7
+npm error Found: react@19.2.3
+npm error node_modules/react
+npm error   react@"19.2.3" from the root project
+npm error   peerOptional react@"*" from @expo/devtools@57.0.0
+npm error   node_modules/@expo/devtools
+npm error     @expo/devtools@"~57.0.0" from expo@57.0.2
+npm error     node_modules/expo
+npm error       expo@"~57.0.2" from the root project
+npm error       14 more (@expo/dom-webview, @expo/log-box, expo-font, ...)
+npm error   43 more (@expo/dom-webview, @expo/log-box, @expo/vector-icons, ...)
+npm error
+npm error Could not resolve dependency:
+npm error peer react@"^19.2.7" from react-dom@19.2.7
+npm error node_modules/react-dom
+npm error   peer react-dom@"^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc" from @radix-ui/react-collection@1.1.11
+npm error   node_modules/@radix-ui/react-collection
+npm error     @radix-ui/react-collection@"1.1.11" from @radix-ui/react-roving-focus@1.1.14
+npm error     node_modules/@radix-ui/react-roving-focus
+npm error       @radix-ui/react-roving-focus@"1.1.14" from @radix-ui/react-tabs@1.1.16
+npm error       node_modules/expo-router/node_modules/@radix-ui/react-tabs
+npm error   peer react-dom@"^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc" from @radix-ui/react-presence@1.1.6
+npm error   node_modules/@radix-ui/react-presence
+npm error     @radix-ui/react-presence@"1.1.6" from @radix-ui/react-tabs@1.1.16
+npm error     node_modules/expo-router/node_modules/@radix-ui/react-tabs
+npm error       @radix-ui/react-tabs@"^1.1.12" from expo-router@6.0.24
+npm error       node_modules/expo-router
+npm error   7 more (@radix-ui/react-primitive, ...)
+npm error
+npm error Conflicting peer dependency: react@19.2.7
+npm error node_modules/react
+npm error   peer react@"^19.2.7" from react-dom@19.2.7
+npm error   node_modules/react-dom
+npm error     peer react-dom@"^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc" from @radix-ui/react-collection@1.1.11
+npm error     node_modules/@radix-ui/react-collection
+npm error       @radix-ui/react-collection@"1.1.11" from @radix-ui/react-roving-focus@1.1.14
+npm error       node_modules/@radix-ui/react-roving-focus
+npm error         @radix-ui/react-roving-focus@"1.1.14" from @radix-ui/react-tabs@1.1.16
+npm error         node_modules/expo-router/node_modules/@radix-ui/react-tabs
+npm error     peer react-dom@"^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc" from @radix-ui/react-presence@1.1.6
+npm error     node_modules/@radix-ui/react-presence
+npm error       @radix-ui/react-presence@"1.1.6" from @radix-ui/react-tabs@1.1.16
+npm error       node_modules/expo-router/node_modules/@radix-ui/react-tabs
+npm error         @radix-ui/react-tabs@"^1.1.12" from expo-router@6.0.24
+npm error         node_modules/expo-router
+npm error     7 more (@radix-ui/react-primitive, ...)
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error C:\Users\WELCOME\AppData\Local\npm-cache\_logs\2026-07-04T08_55_02_577Z-eresolve-report.txt
+npm error A complete log of this run can be found in: C:\Users\WELCOME\AppData\Local\npm-cache\_logs\2026-07-04T08_55_02_577Z-debug-0.log

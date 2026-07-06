@@ -1,681 +1,1020 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useRef,
-} from "react";
-import { Animated, Easing, Dimensions } from "react-native";
-import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
   ActivityIndicator,
+  Animated,
+  Modal,
   RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Image } from "expo-image";
+import { AppScreen } from "../../components/explore/AppScreen";
+import { useAppInsets } from "../../hooks/use-app-insets";
+
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router, useFocusEffect } from "expo-router";
 import { apiUrl } from "../../constants/api";
+import {
+  DEFAULT_HOTEL_IMAGE,
+  DEFAULT_TOUR_IMAGE,
+  ExploreColors,
+  Layout,
+} from "../../constants/exploreTheme";
+import { CategoryScroller, type CategoryItem } from "../../components/explore/CategoryScroller";
+import { DestinationCard, type DestinationItem } from "../../components/explore/DestinationCard";
+import { ListingCard } from "../../components/explore/ListingCard";
+import { SearchBar } from "../../components/explore/SearchBar";
+import { SearchPill } from "../../components/explore/SearchPill";
+import { SafeImage } from "../../components/explore/SafeImage";
+import { SectionHeader } from "../../components/explore/SectionHeader";
+import { type TourItem } from "../../components/explore/TourHorizontalCard";
+import type { HotelItem } from "../../components/explore/HotelCard";
 
-const STORAGE_KEYS = {
-  userData: "userData",
-  wishlistTours: "wishlistTours",
-} as const;
+const STORAGE_KEYS = { userData: "userData", wishlistTours: "wishlistTours", token: "token" } as const;
 
-type Destination = {
+type AppNotification = {
   _id: string;
-  packageId?: string;
-  title?: string;
-  name?: string; // fallback
-  location?: string;
-  rating?: number;
-  image?: string;
-  images?: string[]; // fallback
-  duration?: string;
-  people?: string;
-  category?: string;
-  price?: number;
-  gallery?: string[];
+  type: string;
+  title: string;
+  body: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
 };
 
-type UserData = {
-  fullname?: string;
-  name?: string;
+const NOTIFICATION_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  vendor_submitted: "document-text-outline",
+  vendor_approved: "checkmark-circle-outline",
+  vendor_rejected: "close-circle-outline",
+  vendor_password: "key-outline",
+  booking_tour: "airplane-outline",
+  booking_hotel: "bed-outline",
+  listing_approved: "checkmark-done-outline",
+  listing_rejected: "close-circle-outline",
+  general: "notifications-outline",
 };
 
-const BACKGROUND_IMAGES = [
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1000&q=80&auto=format",
-  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1000&q=80&auto=format",
-  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1000&q=80&auto=format",
-  "https://images.unsplash.com/photo-1493558103817-58b2924bce98?w=1000&q=80&auto=format",
-  "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1000&q=80&auto=format",
+function timeAgo(value: string) {
+  const diff = Date.now() - new Date(value).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
+const CATEGORIES: CategoryItem[] = [
+  { id: "All", label: "All", icon: "compass-outline" },
+  { id: "Beach", label: "Beach", icon: "sunny-outline" },
+  { id: "Mountain", label: "Mountains", icon: "trail-sign-outline" },
+  { id: "City", label: "Cities", icon: "business-outline" },
+  { id: "Adventure", label: "Adventure", icon: "bicycle-outline" },
+  { id: "Culture", label: "Culture", icon: "color-palette-outline" },
 ];
 
-const DEFAULT_IMAGE = BACKGROUND_IMAGES[0];
+const DESTINATIONS: DestinationItem[] = [
+  {
+    id: "goa",
+    name: "Goa",
+    tagline: "Beaches & nightlife",
+    image: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=600&q=80&auto=format",
+  },
+  {
+    id: "manali",
+    name: "Manali",
+    tagline: "Snow peaks & valleys",
+    image: "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=600&q=80&auto=format",
+  },
+  {
+    id: "jaipur",
+    name: "Jaipur",
+    tagline: "Royal heritage",
+    image: "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=600&q=80&auto=format",
+  },
+  {
+    id: "kerala",
+    name: "Kerala",
+    tagline: "Backwaters & greens",
+    image: "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=600&q=80&auto=format",
+  },
+  {
+    id: "ladakh",
+    name: "Ladakh",
+    tagline: "High-altitude escape",
+    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80&auto=format",
+  },
+  {
+    id: "udaipur",
+    name: "Udaipur",
+    tagline: "City of lakes",
+    image: "https://images.unsplash.com/photo-1599669454699-248893623440?w=600&q=80&auto=format",
+  },
+];
 
-const StarRating = React.memo(({ rating }: { rating: number }) => (
-  <View style={{ flexDirection: "row" }}>
-    {[1, 2, 3, 4, 5].map((i) => (
-      <Ionicons
-        key={i}
-        name={i <= rating ? "star" : "star-outline"}
-        size={14}
-        color="#FFD700"
-      />
-    ))}
-  </View>
-));
+const INSPIRATION = [
+  {
+    title: "Weekend getaways",
+    image: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=80&auto=format",
+    route: "/(tabs)/tour" as const,
+  },
+  {
+    title: "Unique stays",
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80&auto=format",
+    route: "/(tabs)/hotels" as const,
+  },
+  {
+    title: "Local events",
+    image: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&q=80&auto=format",
+    route: "/(tabs)/events" as const,
+  },
+  {
+    title: "Become a host",
+    image: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80&auto=format",
+    route: "/becomeVendor" as const,
+  },
+];
 
-function safeParseJson<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
+function safeParse<T>(v: string | null, fb: T): T {
+  if (!v) return fb;
   try {
-    return JSON.parse(value) as T;
+    return JSON.parse(v) as T;
   } catch {
-    return fallback;
+    return fb;
   }
 }
 
-const TourCard = React.memo(
-  ({ item, wishlistIds, toggleWishlist, router, DEFAULT_IMAGE }: any) => (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={() =>
-        router.push({
-          pathname: "/tourDetails",
-          params: {
-            packageId: item.packageId || item._id,
-            tourId: item._id,
-            title: item.title || item.name || "",
-            image: item.image || item.images?.[0] || "",
-            rating: String(item.rating ?? 4),
-            locationName: item.location || "",
-            price: String(item.price || ""),
-            duration: item.duration || "",
-            people: item.people || "",
-            latitude: String(item.latitude || ""),
-            longitude: String(item.longitude || ""),
-          },
-        })
-      }
-      style={styles.card}
-    >
-      <Image
-        source={{ uri: item.image || item.images?.[0] || DEFAULT_IMAGE }}
-        style={styles.cardImage}
-        contentFit="cover"
-        transition={200}
-      />
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
 
-      <TouchableOpacity
-        style={styles.heart}
-        onPress={() => toggleWishlist(item)}
-      >
-        <Ionicons
-          name={wishlistIds.has(item._id) ? "heart" : "heart-outline"}
-          size={20}
-          color="red"
-        />
-      </TouchableOpacity>
-
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {item.title || item.name}
-        </Text>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            width: 160,
-          }}
-        >
-          <View>
-            <Text style={styles.cardSub}>{item.location}</Text>
-            <StarRating rating={item.rating || 4} />
-          </View>
-          <Text style={styles.cardPrice}>₹{item.price || 15000}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  ),
-);
-
-const FeaturedTourCard = React.memo(
-  ({ tour, showAllFeatured, router, DEFAULT_IMAGE }: any) => (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={() =>
-        router.push({
-          pathname: "/tourDetails",
-          params: {
-            packageId: tour.packageId || tour._id,
-            tourId: tour._id,
-            title: tour.title || tour.name || "",
-            image: tour.image || tour.images?.[0] || DEFAULT_IMAGE,
-            rating: String(tour.rating ?? 4),
-            locationName: tour.location || "",
-            price: String(tour.price || ""),
-            latitude: String(tour.latitude || ""),
-            longitude: String(tour.longitude || ""),
-          },
-        })
-      }
-      style={styles.tourCard}
-    >
-      <Image
-        source={{ uri: tour.image || tour.images?.[0] || DEFAULT_IMAGE }}
-        style={styles.tourImage}
-        contentFit="cover"
-        transition={200}
-      />
-      <View style={styles.tourCardInfo}>
-        <Text style={styles.tourTitle} numberOfLines={1}>
-          {tour.title || tour.name}
-        </Text>
-
-        <View style={styles.locRow}>
-          <Ionicons name="location-outline" size={14} color="#6B7280" />
-          <Text style={styles.tourSub}>{tour.location}</Text>
-        </View>
-
-        <View style={styles.cardBottomRow}>
-          <View style={styles.priceRow}>
-            <Text style={styles.newPrice}>₹{tour.price || 15000}</Text>
-            <Text style={styles.per}>/person</Text>
-          </View>
-
-          <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={12} color="#F59E0B" />
-            <Text style={styles.ratingText}>{tour.rating || 4.5}</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  ),
-);
+function tourParams(item: TourItem, imageUri: string, title: string) {
+  return {
+    packageId: item.packageId || item._id,
+    tourId: item._id,
+    title,
+    image: imageUri,
+    rating: String(item.rating ?? 4),
+    locationName: item.location || "",
+    price: String(item.price || ""),
+    duration: item.duration || "",
+    people: item.people || "",
+    latitude: String(item.latitude || ""),
+    longitude: String(item.longitude || ""),
+  };
+}
 
 export default function HomeScreen() {
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [searchText, setSearchText] = useState("");
-  const [destinations, setDestinations] = useState<Destination[]>([]);
-  const [userName, setUserName] = useState("User");
-  const [wishlistTours, setWishlistTours] = useState<Destination[]>([]);
+  const { scrollBottomPad, headerTopPad } = useAppInsets();
+  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [tours, setTours] = useState<TourItem[]>([]);
+  const [hotels, setHotels] = useState<HotelItem[]>([]);
+  const [userName, setUserName] = useState("Explorer");
+  const [wishlist, setWishlist] = useState<TourItem[]>([]);
   const [loadingTours, setLoadingTours] = useState(true);
+  const [loadingHotels, setLoadingHotels] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [errorText, setErrorText] = useState("");
+  const [error, setError] = useState("");
+  const [token, setToken] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const fetched = useRef(false);
+  const searchAnim = useRef(new Animated.Value(0)).current;
+  const notifyAnim = useRef(new Animated.Value(0)).current;
 
-  const [showAllFeatured, setShowAllFeatured] = useState(false);
-  const categories = ["All", "Beach", "Mountain"];
+  const wishlistIds = useMemo(() => new Set(wishlist.map((t) => t._id)), [wishlist]);
 
-  const [currentBg, setCurrentBg] = useState(0);
-  const [nextBg, setNextBg] = useState(1);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const hasInitialFetch = useRef(false);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      // Fade in the NEXT image on top of current
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 2000, // Slightly longer for premium feel
-        useNativeDriver: true,
-      }).start(() => {
-        // Now that the next image is fully visible:
-        // 1. Make it the current background
-        setCurrentBg(nextBg);
-        // 2. Prepare the next next background
-        setNextBg((nextBg + 1) % BACKGROUND_IMAGES.length);
-        // 3. Reset opacity of the top layer back to 0
-        fadeAnim.setValue(0);
-      });
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [nextBg, fadeAnim]);
-
-  const wishlistIds = useMemo(
-    () => new Set(wishlistTours.map((t) => t._id)),
-    [wishlistTours],
-  );
-
-  const syncLocalSessionData = useCallback(async () => {
-    const entries = await AsyncStorage.multiGet([
+  const loadLocal = useCallback(async () => {
+    const data = await AsyncStorage.multiGet([
       STORAGE_KEYS.userData,
       STORAGE_KEYS.wishlistTours,
+      STORAGE_KEYS.token,
     ]);
-    const map = Object.fromEntries(entries);
-
-    const user = safeParseJson<UserData | null>(
-      map[STORAGE_KEYS.userData],
-      null,
-    );
-    const storedWishlist = safeParseJson<Destination[]>(
-      map[STORAGE_KEYS.wishlistTours],
-      [],
-    );
-
-    setUserName(user?.fullname?.trim() || user?.name?.trim() || "User");
-    setWishlistTours(Array.isArray(storedWishlist) ? storedWishlist : []);
+    const map = Object.fromEntries(data);
+    const user = safeParse<{ fullname?: string; name?: string } | null>(map[STORAGE_KEYS.userData], null);
+    setUserName(user?.fullname || user?.name || "Explorer");
+    setWishlist(safeParse<TourItem[]>(map[STORAGE_KEYS.wishlistTours], []));
+    setToken(map[STORAGE_KEYS.token] || null);
   }, []);
 
-  const fetchTours = useCallback(async (search = "") => {
-    setErrorText("");
+  const fetchNotifications = useCallback(async (authToken?: string | null) => {
+    const activeToken = authToken ?? token;
+    if (!activeToken) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
     try {
-      setLoadingTours(true);
-      const url = search
-        ? apiUrl(`/api/tours?search=${encodeURIComponent(search)}`)
-        : apiUrl("/api/tours");
-
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (response.ok && data?.success && Array.isArray(data?.tours)) {
-        setDestinations(data.tours);
-      } else {
-        setDestinations([]);
-        setErrorText(data?.message || "Unable to fetch tours.");
+      setLoadingNotifications(true);
+      const res = await fetch(apiUrl("/api/users/notifications"), {
+        headers: { Authorization: `Bearer ${activeToken}` },
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
       }
     } catch {
-      setDestinations([]);
-      setErrorText("Unable to fetch tours. Please try again.");
+      // keep previous notifications on transient errors
+    } finally {
+      setLoadingNotifications(false);
+    }
+  }, [token]);
+
+  const markNotificationRead = useCallback(
+    async (id: string) => {
+      if (!token) return;
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, read: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+      try {
+        await fetch(apiUrl(`/api/users/notifications/${id}/read`), {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        fetchNotifications();
+      }
+    },
+    [token, fetchNotifications]
+  );
+
+  const markAllNotificationsRead = useCallback(async () => {
+    if (!token) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+    try {
+      await fetch(apiUrl("/api/users/notifications/read-all"), {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      fetchNotifications();
+    }
+  }, [token, fetchNotifications]);
+
+  const openNotification = useCallback(
+    async (item: AppNotification) => {
+      if (!item.read) await markNotificationRead(item._id);
+      setNotificationsOpen(false);
+      if (item.link) router.push(item.link as never);
+    },
+    [markNotificationRead]
+  );
+
+  const fetchTours = useCallback(async (q = "") => {
+    setError("");
+    try {
+      setLoadingTours(true);
+      const url = q ? apiUrl(`/api/tours?search=${encodeURIComponent(q)}`) : apiUrl("/api/tours");
+      const res = await fetch(url);
+      const data = await res.json();
+      setTours(res.ok && data?.success ? data.tours || [] : []);
+      if (!res.ok || !data?.success) setError(data?.message || "Could not load tours");
+    } catch {
+      setTours([]);
+      setError("Could not load tours");
     } finally {
       setLoadingTours(false);
-      setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => {
-    syncLocalSessionData();
-  }, [syncLocalSessionData]);
+  const fetchHotels = useCallback(async () => {
+    try {
+      setLoadingHotels(true);
+      const res = await fetch(apiUrl("/api/hotels"));
+      const data = await res.json();
+      setHotels(res.ok && data?.success ? data.hotels || [] : []);
+    } catch {
+      setHotels([]);
+    } finally {
+      setLoadingHotels(false);
+    }
+  }, []);
 
-  // Only fetch tours once when screen is focused
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    const data = await AsyncStorage.multiGet([STORAGE_KEYS.token]);
+    const map = Object.fromEntries(data);
+    const activeToken = map[STORAGE_KEYS.token] || null;
+    setToken(activeToken);
+    await Promise.all([
+      loadLocal(),
+      fetchTours(search.trim()),
+      fetchHotels(),
+      fetchNotifications(activeToken),
+    ]);
+    setRefreshing(false);
+  }, [loadLocal, fetchTours, fetchHotels, search, fetchNotifications]);
+
+  useEffect(() => {
+    loadLocal();
+  }, [loadLocal]);
+
   useFocusEffect(
     useCallback(() => {
-      if (!hasInitialFetch.current) {
-        hasInitialFetch.current = true;
+      if (!fetched.current) {
+        fetched.current = true;
         fetchTours("");
+        fetchHotels();
       }
-    }, [fetchTours]),
+      (async () => {
+        await loadLocal();
+        const storedToken = await AsyncStorage.getItem(STORAGE_KEYS.token);
+        fetchNotifications(storedToken);
+      })();
+    }, [fetchTours, fetchHotels, loadLocal, fetchNotifications])
   );
 
-  // Search debounce - separate from initial fetch
   useEffect(() => {
-    if (!searchText.trim()) return;
-
-    const id = setTimeout(() => {
-      fetchTours(searchText.trim());
-    }, 400);
-
+    if (!search.trim()) return;
+    const id = setTimeout(() => fetchTours(search.trim()), 400);
     return () => clearTimeout(id);
-  }, [searchText, fetchTours]);
+  }, [search, fetchTours]);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    syncLocalSessionData();
-    fetchTours(searchText.trim());
-  }, [fetchTours, searchText, syncLocalSessionData]);
+  useEffect(() => {
+    Animated.spring(searchAnim, {
+      toValue: searchOpen ? 1 : 0,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  }, [searchOpen, searchAnim]);
 
-  const filteredDestinations = useMemo(() => {
-    if (activeCategory === "All") return destinations;
-    return destinations.filter((item) => {
-      const cat = (item.category || "").toLowerCase();
-      const active = activeCategory.toLowerCase();
-      // If the item doesn't have a category, it only shows in "All"
-      return cat.includes(active);
-    });
-  }, [activeCategory, destinations]);
+  useEffect(() => {
+    Animated.spring(notifyAnim, {
+      toValue: notificationsOpen ? 1 : 0,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  }, [notificationsOpen, notifyAnim]);
 
-  const featuredTours = useMemo(
-    () => filteredDestinations.slice(0, showAllFeatured ? undefined : 3),
-    [filteredDestinations, showAllFeatured],
-  );
+  const filteredTours = useMemo(() => {
+    if (category === "All") return tours;
+    return tours.filter((t) => (t.category || "").toLowerCase().includes(category.toLowerCase()));
+  }, [category, tours]);
+
+  const topTours = useMemo(() => filteredTours.slice(0, 8), [filteredTours]);
+  const topHotels = useMemo(() => hotels.slice(0, 8), [hotels]);
+  const wishlistPreview = useMemo(() => wishlist.slice(0, 6), [wishlist]);
 
   const toggleWishlist = useCallback(
-    async (tour: Destination) => {
-      try {
-        const exists = wishlistTours.some((item) => item._id === tour._id);
-
-        let updated: Destination[] = [];
-        if (exists) {
-          updated = wishlistTours.filter((item) => item._id !== tour._id);
-        } else {
-          updated = [tour, ...wishlistTours];
-        }
-
-        setWishlistTours(updated);
-        await AsyncStorage.setItem(
-          STORAGE_KEYS.wishlistTours,
-          JSON.stringify(updated),
-        );
-      } catch {
-        // keep UI responsive even if storage fails
-      }
+    async (tour: TourItem) => {
+      const next = wishlistIds.has(tour._id)
+        ? wishlist.filter((t) => t._id !== tour._id)
+        : [tour, ...wishlist];
+      setWishlist(next);
+      await AsyncStorage.setItem(STORAGE_KEYS.wishlistTours, JSON.stringify(next));
     },
-    [wishlistTours],
+    [wishlist, wishlistIds]
   );
 
-  const renderStars = (rating: number) => (
-    <View style={{ flexDirection: "row" }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons
-          key={i}
-          name={i <= rating ? "star" : "star-outline"}
-          size={14}
-          color="#FFD700"
-        />
-      ))}
-    </View>
-  );
+  const openSearch = () => setSearchOpen(true);
+  const closeSearch = () => setSearchOpen(false);
+
+  const searchSubtitle = search.trim()
+    ? search.trim()
+    : category !== "All"
+      ? `${category} · Any dates`
+      : "Anywhere · Any week · Add guests";
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <View style={styles.header}>
-        <View style={styles.headerWrapper}>
-          {/* Static Bottom Layer (The "current" image) */}
-          <Image
-            source={{ uri: BACKGROUND_IMAGES[currentBg] }}
-            style={styles.headerImage}
-          />
-          {/* Animated Top Layer (The "next" image fading in) */}
-          <Animated.Image
-            source={{ uri: BACKGROUND_IMAGES[nextBg] }}
-            style={[
-              styles.headerImage,
-              { position: "absolute", opacity: fadeAnim },
-            ]}
-          />
-          <View style={styles.headerOverlay} />
-        </View>
-
-        <View style={styles.headerContent}>
-          <Text style={styles.greeting}>Good Morning,</Text>
-          <Text style={styles.username}>{userName}</Text>
-          <Text style={styles.heading}>
-            Where will your next adventure take you?
-          </Text>
-
-          <View style={styles.searchRow}>
-            <View style={[styles.searchBar, { flex: 1 }]}>
-              <Ionicons name="search" size={20} color="#9CA3AF" />
-              <TextInput
-                placeholder="Where do you want to go?"
-                placeholderTextColor="#9CA3AF"
-                value={searchText}
-                onChangeText={setSearchText}
-                style={{ flex: 1, marginLeft: 10 }}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+    <AppScreen variant="tab" style={styles.safe}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView
+        style={styles.screen}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refreshAll} tintColor={ExploreColors.primary} />
+        }
+      >
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <View style={styles.brandWrap}>
+            <View style={styles.brandIcon}>
+              <Ionicons name="compass" size={18} color={ExploreColors.primary} />
+            </View>
+            <View>
+              <Text style={styles.brandName}>Explore</Text>
+              <Text style={styles.greet}>
+                {greeting()}, {userName.split(" ")[0]}
+              </Text>
             </View>
           </View>
-        </View>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {categories.map((cat) => (
-          <TouchableOpacity
-            key={cat}
-            style={[
-              styles.categoryBtn,
-              activeCategory === cat && styles.activeCategory,
-            ]}
-            onPress={() => setActiveCategory(cat)}
-          >
-            <Text
-              style={[
-                styles.categoryText,
-                activeCategory === cat && { color: "#fff" },
-              ]}
+          <View style={styles.topActions}>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                setNotificationsOpen(true);
+                fetchNotifications();
+              }}
             >
-              {cat}
+              <Ionicons name="notifications-outline" size={20} color={ExploreColors.text} />
+              {unreadCount > 0 ? (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              activeOpacity={0.8}
+              onPress={() => router.push("/(tabs)/profile")}
+            >
+              <Ionicons name="person-circle-outline" size={22} color={ExploreColors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Search pill */}
+        <View style={styles.searchWrap}>
+          <SearchPill
+            onPress={openSearch}
+            title="Where to?"
+            subtitle={searchSubtitle}
+          />
+        </View>
+
+        {/* Categories */}
+        <View style={styles.categoryWrap}>
+          <CategoryScroller items={CATEGORIES} active={category} onChange={setCategory} />
+        </View>
+
+        {/* Popular destinations */}
+        <View style={styles.section}>
+          <SectionHeader
+            title="Popular destinations"
+            subtitle="Trending places across India"
+            actionLabel="Explore"
+            onAction={() => router.push("/(tabs)/tour")}
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {DESTINATIONS.map((d, i) => (
+              <DestinationCard
+                key={d.id}
+                item={d}
+                isFirst={i === 0}
+                onPress={() => {
+                  setSearch(d.name);
+                  setCategory("All");
+                  fetchTours(d.name);
+                }}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Stays */}
+        <View style={styles.section}>
+          <SectionHeader
+            title="Stays guests love"
+            subtitle="Handpicked hotels & homestays"
+            actionLabel="See all"
+            onAction={() => router.push("/(tabs)/hotels")}
+          />
+          {loadingHotels && hotels.length === 0 ? (
+            <ActivityIndicator color={ExploreColors.primary} style={styles.loader} />
+          ) : topHotels.length === 0 ? (
+            <Text style={styles.empty}>No stays available yet</Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {topHotels.map((h, i) => (
+                <ListingCard
+                  key={h._id}
+                  id={h._id}
+                  image={h.image || DEFAULT_HOTEL_IMAGE}
+                  title={h.title}
+                  subtitle={`${h.city || h.location || "India"} · ${h.propertyType || "Stay"}`}
+                  price={h.pricePerNight}
+                  priceSuffix=" /night"
+                  rating={h.rating}
+                  badge={i === 0 ? "Guest favourite" : undefined}
+                  isFirst={i === 0}
+                  onPress={() => router.push({ pathname: "/hotelDetails", params: { hotelId: h._id } })}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        {/* Tours */}
+        <View style={styles.section}>
+          <SectionHeader
+            title="Top-rated tours"
+            subtitle="Curated trips for every traveller"
+            actionLabel="See all"
+            onAction={() => router.push("/(tabs)/tour")}
+          />
+          {loadingTours && tours.length === 0 ? (
+            <ActivityIndicator color={ExploreColors.primary} style={styles.loader} />
+          ) : topTours.length === 0 ? (
+            <Text style={styles.empty}>No tours found</Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {topTours.map((t, i) => {
+                const imageUri = t.image || t.images?.[0] || DEFAULT_TOUR_IMAGE;
+                const title = t.title || t.name || "Tour";
+                return (
+                  <ListingCard
+                    key={t._id}
+                    id={t._id}
+                    image={imageUri}
+                    title={title}
+                    subtitle={`${t.location || "India"} · ${t.duration || "Flexible"}`}
+                    price={t.price || 15000}
+                    rating={t.rating}
+                    isWishlisted={wishlistIds.has(t._id)}
+                    onToggleWishlist={() => toggleWishlist(t)}
+                    isFirst={i === 0}
+                    onPress={() =>
+                      router.push({ pathname: "/tourDetails", params: tourParams(t, imageUri, title) })
+                    }
+                  />
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+
+        {/* Inspiration grid */}
+        <View style={styles.section}>
+          <SectionHeader title="Get inspired" subtitle="Discover something new" />
+          <View style={styles.inspireGrid}>
+            {INSPIRATION.map((item) => (
+              <TouchableOpacity
+                key={item.title}
+                style={styles.inspireCard}
+                activeOpacity={0.9}
+                onPress={() => router.push(item.route as any)}
+              >
+                <SafeImage uri={item.image} fallback={DEFAULT_TOUR_IMAGE} style={styles.inspireImg} contentFit="cover" />
+                <View style={styles.inspireOverlay} />
+                <Text style={styles.inspireTitle}>{item.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Wishlist */}
+        {wishlistPreview.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeader
+              title="Your wishlist"
+              subtitle={`${wishlist.length} saved ${wishlist.length === 1 ? "trip" : "trips"}`}
+              actionLabel="View all"
+              onAction={() => router.push("/(tabs)/tour")}
+            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {wishlistPreview.map((t, i) => {
+                const imageUri = t.image || t.images?.[0] || DEFAULT_TOUR_IMAGE;
+                const title = t.title || t.name || "Tour";
+                return (
+                  <ListingCard
+                    key={t._id}
+                    id={t._id}
+                    image={imageUri}
+                    title={title}
+                    subtitle={t.location || "India"}
+                    price={t.price || 15000}
+                    rating={t.rating}
+                    isWishlisted
+                    onToggleWishlist={() => toggleWishlist(t)}
+                    isFirst={i === 0}
+                    onPress={() =>
+                      router.push({ pathname: "/tourDetails", params: tourParams(t, imageUri, title) })
+                    }
+                  />
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {/* Host CTA */}
+        <TouchableOpacity
+          style={styles.hostBanner}
+          activeOpacity={0.9}
+          onPress={() => router.push("/becomeVendor")}
+        >
+          <View style={styles.hostText}>
+            <Text style={styles.hostTitle}>Earn by hosting on Explore</Text>
+            <Text style={styles.hostSub}>
+              List your property or tour — it's easy to start and you control your availability.
             </Text>
-          </TouchableOpacity>
-        ))}
+            <Text style={styles.hostLink}>Get started →</Text>
+          </View>
+          <View style={styles.hostIcon}>
+            <Ionicons name="home" size={28} color={ExploreColors.primary} />
+          </View>
+        </TouchableOpacity>
+
+        {error ? <Text style={styles.err}>{error}</Text> : null}
+        <View style={{ height: scrollBottomPad }} />
       </ScrollView>
 
-      {loadingTours && destinations.length === 0 ? (
-        <View style={styles.loaderBox}>
-          <ActivityIndicator size="large" color="#003D82" />
-        </View>
-      ) : (
-        <FlatList
-          horizontal
-          data={filteredDestinations}
-          keyExtractor={(item) => item._id}
-          showsHorizontalScrollIndicator={false}
-          style={{ marginTop: 20 }}
-          // Performance props
-          initialNumToRender={5}
-          maxToRenderPerBatch={5}
-          windowSize={5}
-          removeClippedSubviews={true}
-          ListEmptyComponent={
-            <View style={styles.emptyList}>
-              <Text style={styles.emptyListText}>No tours found.</Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <TourCard
-              item={item}
-              wishlistIds={wishlistIds}
-              toggleWishlist={toggleWishlist}
-              router={router}
-              DEFAULT_IMAGE={DEFAULT_IMAGE}
-            />
-          )}
-        />
-      )}
-
-      <View style={styles.featureSection}>
-        <View style={styles.featureHeader}>
-          <Text style={styles.featureTitle}>Featured Tours</Text>
-          <TouchableOpacity
-            onPress={() => setShowAllFeatured(!showAllFeatured)}
+      {/* Notifications modal */}
+      <Modal
+        visible={notificationsOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setNotificationsOpen(false)}
+      >
+        <View style={[styles.modalBackdrop, { paddingTop: headerTopPad + 12 }]}>
+          <Animated.View
+            style={[
+              styles.notifySheet,
+              {
+                transform: [
+                  {
+                    translateY: notifyAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [30, 0],
+                    }),
+                  },
+                ],
+                opacity: notifyAnim,
+              },
+            ]}
           >
-            <Text style={styles.seeAll}>
-              {showAllFeatured ? "Show Less" : "See All"}
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.modalHead}>
+              <View>
+                <Text style={styles.modalTitle}>Notifications</Text>
+                {unreadCount > 0 ? (
+                  <Text style={styles.modalHint}>{unreadCount} unread</Text>
+                ) : null}
+              </View>
+              <View style={styles.notifyHeadActions}>
+                {unreadCount > 0 ? (
+                  <TouchableOpacity onPress={markAllNotificationsRead} hitSlop={8}>
+                    <Text style={styles.markAllText}>Mark all read</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity onPress={() => setNotificationsOpen(false)} hitSlop={12}>
+                  <Ionicons name="close" size={24} color={ExploreColors.text} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {!token ? (
+              <View style={styles.notifyEmpty}>
+                <Ionicons name="log-in-outline" size={36} color={ExploreColors.textMuted} />
+                <Text style={styles.notifyEmptyTitle}>Sign in for updates</Text>
+                <Text style={styles.notifyEmptySub}>
+                  Login to see booking confirmations, partner application status, and more.
+                </Text>
+                <TouchableOpacity
+                  style={styles.notifyLoginBtn}
+                  onPress={() => {
+                    setNotificationsOpen(false);
+                    router.push("/(auth)/login");
+                  }}
+                >
+                  <Text style={styles.notifyLoginBtnText}>Login</Text>
+                </TouchableOpacity>
+              </View>
+            ) : loadingNotifications && notifications.length === 0 ? (
+              <View style={styles.notifyLoader}>
+                <ActivityIndicator color={ExploreColors.primary} />
+              </View>
+            ) : notifications.length === 0 ? (
+              <View style={styles.notifyEmpty}>
+                <Ionicons name="notifications-off-outline" size={36} color={ExploreColors.textMuted} />
+                <Text style={styles.notifyEmptyTitle}>No notifications yet</Text>
+                <Text style={styles.notifyEmptySub}>
+                  Bookings, vendor updates, and admin replies will show up here.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.notifyList} showsVerticalScrollIndicator={false}>
+                {notifications.map((item) => {
+                  const icon = NOTIFICATION_ICONS[item.type] || "notifications-outline";
+                  return (
+                    <TouchableOpacity
+                      key={item._id}
+                      style={[styles.notifyItem, !item.read && styles.notifyItemUnread]}
+                      activeOpacity={0.75}
+                      onPress={() => openNotification(item)}
+                    >
+                      <View style={[styles.notifyIcon, !item.read && styles.notifyIconUnread]}>
+                        <Ionicons name={icon} size={18} color={!item.read ? ExploreColors.primary : ExploreColors.textSecondary} />
+                      </View>
+                      <View style={styles.notifyBody}>
+                        <View style={styles.notifyTitleRow}>
+                          <Text style={[styles.notifyTitle, !item.read && styles.notifyTitleUnread]} numberOfLines={1}>
+                            {item.title}
+                          </Text>
+                          <Text style={styles.notifyTime}>{timeAgo(item.createdAt)}</Text>
+                        </View>
+                        <Text style={styles.notifyText} numberOfLines={3}>
+                          {item.body}
+                        </Text>
+                      </View>
+                      {!item.read ? <View style={styles.unreadDot} /> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </Animated.View>
         </View>
+      </Modal>
 
-        {featuredTours.map((tour) => (
-          <FeaturedTourCard
-            key={tour._id}
-            tour={tour}
-            showAllFeatured={showAllFeatured}
-            router={router}
-            DEFAULT_IMAGE={DEFAULT_IMAGE}
-          />
-        ))}
-
-        {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
-      </View>
-    </ScrollView>
+      {/* Search modal */}
+      <Modal visible={searchOpen} animationType="fade" transparent onRequestClose={closeSearch}>
+        <View style={[styles.modalBackdrop, { paddingTop: headerTopPad + 12 }]}>
+          <Animated.View
+            style={[
+              styles.modalSheet,
+              {
+                transform: [
+                  {
+                    translateY: searchAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [40, 0],
+                    }),
+                  },
+                ],
+                opacity: searchAnim,
+              },
+            ]}
+          >
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle}>Search trips</Text>
+              <TouchableOpacity onPress={closeSearch} hitSlop={12}>
+                <Ionicons name="close" size={24} color={ExploreColors.text} />
+              </TouchableOpacity>
+            </View>
+            <SearchBar
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search destinations, cities..."
+            />
+            <Text style={styles.modalHint}>Try Goa, Manali, Jaipur...</Text>
+            <View style={styles.quickDest}>
+              {DESTINATIONS.slice(0, 4).map((d) => (
+                <TouchableOpacity
+                  key={d.id}
+                  style={styles.quickChip}
+                  onPress={() => {
+                    setSearch(d.name);
+                    closeSearch();
+                  }}
+                >
+                  <Text style={styles.quickChipText}>{d.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.searchBtn} onPress={closeSearch}>
+              <Ionicons name="search" size={18} color="#fff" />
+              <Text style={styles.searchBtnText}>Search</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
+    </AppScreen>
   );
 }
 
+const CARD_GAP = 10;
+const INSPIRE_W = (Layout.screenWidth - Layout.pad * 2 - CARD_GAP) / 2;
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F5F5" },
-  header: {
-    height: 300,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    overflow: "hidden",
-  },
-  headerWrapper: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 300,
-  },
-  headerImage: {
-    width: Dimensions.get("window").width,
-    height: 300,
-  },
-  headerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.15)",
-  },
-  headerContent: { position: "absolute", top: 50, padding: 20 },
-  greeting: { color: "#fff" },
-  username: { color: "#fff", fontSize: 20, fontWeight: "700" },
-  heading: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "700",
-    marginVertical: 10,
-  },
-  searchRow: {
+  safe: { flex: 1, backgroundColor: ExploreColors.surface },
+  screen: { flex: 1, backgroundColor: ExploreColors.surface },
+  topBar: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 15,
+    justifyContent: "space-between",
+    paddingHorizontal: Layout.pad,
+    paddingBottom: 4,
   },
-  searchBar: {
-    backgroundColor: "#fff",
-    borderRadius: 25,
-    flexDirection: "row",
+  brandWrap: { flexDirection: "row", alignItems: "center", gap: 10 },
+  brandIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: ExploreColors.primarySoft,
     alignItems: "center",
-    padding: 12,
-  },
-  categoryBtn: {
-    backgroundColor: "#eee",
-    padding: 10,
-    borderRadius: 20,
-    margin: 10,
-  },
-  activeCategory: { backgroundColor: "#003D82" },
-  categoryText: {},
-
-  loaderBox: {
-    height: 120,
     justifyContent: "center",
-    alignItems: "center",
   },
-  emptyList: {
-    marginLeft: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    width: 180,
-  },
-  emptyListText: { color: "#6B7280" },
-
-  card: {
-    marginLeft: 15,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  cardImage: { width: 180, height: 220 },
-  heart: { position: "absolute", top: 10, right: 10 },
-  cardContent: { position: "absolute", bottom: 10, left: 10, right: 10 },
-  cardTitle: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  cardSub: { color: "#ddd", fontSize: 11 },
-  cardPrice: { color: "#fff", fontWeight: "700", fontSize: 14 },
-
-  featureSection: { marginTop: 25, paddingHorizontal: 15 },
-  featureHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  featureTitle: { fontSize: 18, fontWeight: "700" },
-  seeAll: { color: "#003D82", fontWeight: "600" },
-
-  tourCard: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 12,
-    marginBottom: 16,
-    alignItems: "center",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-  },
-  tourImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 16,
-  },
-  tourCardInfo: {
-    flex: 1,
-    marginLeft: 15,
-    height: 100,
-    justifyContent: "space-between",
-    paddingVertical: 2,
-  },
-  tourTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-  locRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  tourSub: {
-    color: "#6B7280",
-    fontSize: 13,
-  },
-  cardBottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 2,
-  },
-  newPrice: {
-    fontSize: 17,
+  brandName: {
+    fontSize: 18,
     fontWeight: "800",
-    color: "#1E3A8A",
+    color: ExploreColors.text,
+    letterSpacing: -0.3,
   },
-  per: {
-    fontSize: 11,
-    color: "#9CA3AF",
+  greet: { fontSize: 12, color: ExploreColors.textSecondary, marginTop: 1 },
+  topActions: { flexDirection: "row", gap: 8 },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: ExploreColors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: ExploreColors.surface,
+    position: "relative",
   },
-  ratingBadge: {
+  bellBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: ExploreColors.error,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: ExploreColors.surface,
+  },
+  bellBadgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  notifySheet: {
+    backgroundColor: ExploreColors.surface,
+    borderRadius: Layout.radius,
+    padding: Layout.pad,
+    maxHeight: "78%",
+    gap: 12,
+  },
+  notifyHeadActions: { flexDirection: "row", alignItems: "center", gap: 12 },
+  markAllText: { fontSize: 13, fontWeight: "700", color: ExploreColors.primary },
+  notifyList: { maxHeight: 420 },
+  notifyItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: ExploreColors.borderLight,
+  },
+  notifyItemUnread: { backgroundColor: ExploreColors.primarySoft, borderRadius: Layout.radiusSm },
+  notifyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: ExploreColors.borderLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notifyIconUnread: { backgroundColor: "#DBEAFE" },
+  notifyBody: { flex: 1 },
+  notifyTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  notifyTitle: { flex: 1, fontSize: 14, fontWeight: "600", color: ExploreColors.text },
+  notifyTitleUnread: { fontWeight: "800" },
+  notifyTime: { fontSize: 11, color: ExploreColors.textMuted },
+  notifyText: { fontSize: 13, color: ExploreColors.textSecondary, lineHeight: 19, marginTop: 4 },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: ExploreColors.primary,
+    marginTop: 6,
+  },
+  notifyEmpty: { alignItems: "center", paddingVertical: 28, paddingHorizontal: 12, gap: 8 },
+  notifyEmptyTitle: { fontSize: 16, fontWeight: "700", color: ExploreColors.text, marginTop: 4 },
+  notifyEmptySub: { fontSize: 13, color: ExploreColors.textSecondary, textAlign: "center", lineHeight: 20 },
+  notifyLoginBtn: {
+    marginTop: 8,
+    backgroundColor: ExploreColors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: Layout.radiusSm,
+  },
+  notifyLoginBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  notifyLoader: { paddingVertical: 40, alignItems: "center" },
+  searchWrap: {
+    paddingHorizontal: Layout.pad,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  categoryWrap: {
+    marginTop: 16,
+  },
+  section: {
+    marginTop: Layout.sectionGap,
+  },
+  loader: { height: Layout.listingImgH + 60, alignSelf: "center" },
+  empty: {
+    color: ExploreColors.textSecondary,
+    textAlign: "center",
+    paddingVertical: 32,
+    paddingHorizontal: Layout.pad,
+    fontSize: 14,
+  },
+  inspireGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: Layout.pad,
+    gap: CARD_GAP,
+  },
+  inspireCard: {
+    width: INSPIRE_W,
+    height: INSPIRE_W * 0.72,
+    borderRadius: Layout.radius,
+    overflow: "hidden",
+    backgroundColor: ExploreColors.borderLight,
+  },
+  inspireImg: { width: "100%", height: "100%" },
+  inspireOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  inspireTitle: {
+    position: "absolute",
+    left: 12,
+    bottom: 12,
+    right: 12,
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  hostBanner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FEF3C7",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
+    marginHorizontal: Layout.pad,
+    marginTop: Layout.sectionGap,
+    padding: Layout.pad,
+    borderRadius: Layout.radius,
+    backgroundColor: ExploreColors.primarySoft,
+    borderWidth: 1,
+    borderColor: ExploreColors.border,
+    gap: 12,
   },
-  ratingText: {
+  hostText: { flex: 1 },
+  hostTitle: { fontSize: 16, fontWeight: "700", color: ExploreColors.text },
+  hostSub: { fontSize: 13, color: ExploreColors.textSecondary, marginTop: 4, lineHeight: 18 },
+  hostLink: { fontSize: 14, fontWeight: "700", color: ExploreColors.primary, marginTop: 8 },
+  hostIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: ExploreColors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  err: {
+    color: ExploreColors.error,
     fontSize: 12,
-    fontWeight: "700",
-    color: "#B45309",
+    marginTop: 12,
+    textAlign: "center",
+    paddingHorizontal: Layout.pad,
   },
-
-  bookBtn: {
-    backgroundColor: "#003D82",
-    paddingHorizontal: 12,
+  footer: { height: 24 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-start",
+    paddingHorizontal: Layout.pad,
+  },
+  modalSheet: {
+    backgroundColor: ExploreColors.surface,
+    borderRadius: Layout.radius,
+    padding: Layout.pad,
+    gap: 14,
+  },
+  modalHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: ExploreColors.text },
+  modalHint: { fontSize: 13, color: ExploreColors.textMuted },
+  quickDest: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  quickChip: {
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
-    marginLeft: 10,
+    borderRadius: 20,
+    backgroundColor: ExploreColors.primarySoft,
+    borderWidth: 1,
+    borderColor: ExploreColors.border,
   },
-  bookBtnText: { color: "#fff", fontWeight: "600", fontSize: 12 },
-
-  errorText: {
-    color: "#DC2626",
-    fontSize: 12,
-    marginTop: 8,
-    marginBottom: 20,
+  quickChipText: { fontSize: 13, fontWeight: "600", color: ExploreColors.primary },
+  searchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: ExploreColors.primary,
+    paddingVertical: 14,
+    borderRadius: Layout.radiusSm,
+    marginTop: 4,
   },
+  searchBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });

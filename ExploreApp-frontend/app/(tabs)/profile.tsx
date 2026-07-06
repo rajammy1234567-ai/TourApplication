@@ -6,415 +6,340 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  StatusBar,
   ActivityIndicator,
-  FlatList,
-  Image,
   Alert,
   RefreshControl,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { AppScreen } from "../../components/explore/AppScreen";
+import { useAppInsets } from "../../hooks/use-app-insets";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiUrl } from "../../constants/api";
+import { ExploreColors, ExploreShadow, Layout } from "../../constants/exploreTheme";
 
-const STORAGE_KEYS = {
-  token: "token",
-  userData: "userData",
-  wishlistTours: "wishlistTours",
-} as const;
+const KEYS = { token: "token", userData: "userData", wishlistTours: "wishlistTours" };
 
-type UserData = {
-  _id?: string;
-  fullname?: string;
-  name?: string;
-  email?: string;
-  phone?: string;
+type UserData = { fullname?: string; name?: string; email?: string; phone?: string };
+
+type VendorApplication = {
+  status: "pending" | "approved" | "rejected";
+  businessName?: string;
 };
 
-type WishlistTour = {
-  _id: string;
-  name: string;
-  location?: string;
-  rating?: number;
-  images?: string[];
+const VENDOR_STATUS = {
+  pending: { label: "Under Review", color: "#D97706", bg: "#FEF3C7", icon: "time-outline" as const },
+  approved: { label: "Approved", color: "#16A34A", bg: "#DCFCE7", icon: "checkmark-circle-outline" as const },
+  rejected: { label: "Rejected", color: "#DC2626", bg: "#FEE2E2", icon: "close-circle-outline" as const },
 };
 
-function safeParseJson<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
+function parse<T>(v: string | null, fb: T): T {
+  if (!v) return fb;
+  try { return JSON.parse(v) as T; } catch { return fb; }
 }
 
 export default function ProfileScreen() {
+  const { scrollBottomPad } = useAppInsets();
   const router = useRouter();
-
   const [notifications, setNotifications] = useState(true);
   const [user, setUser] = useState<UserData | null>(null);
-  const [bookingCount, setBookingCount] = useState(0);
-  const [wishlist, setWishlist] = useState<WishlistTour[]>([]);
+  const [bookings, setBookings] = useState(0);
+  const [wishlist, setWishlist] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [errorText, setErrorText] = useState("");
+  const [vendorApp, setVendorApp] = useState<VendorApplication | null>(null);
 
-  const wishlistCount = useMemo(() => wishlist.length, [wishlist.length]);
-
-  const loadProfileData = useCallback(async () => {
-    setErrorText("");
+  const load = useCallback(async () => {
     try {
-      const entries = await AsyncStorage.multiGet([
-        STORAGE_KEYS.token,
-        STORAGE_KEYS.userData,
-        STORAGE_KEYS.wishlistTours,
-      ]);
-
-      const map = Object.fromEntries(entries);
-      const token = map[STORAGE_KEYS.token] ?? null;
-      const storedUser = safeParseJson<UserData | null>(
-        map[STORAGE_KEYS.userData],
-        null
-      );
-      const storedWishlist = safeParseJson<WishlistTour[]>(
-        map[STORAGE_KEYS.wishlistTours],
-        []
-      );
-
-      setUser(storedUser);
-      setWishlist(Array.isArray(storedWishlist) ? storedWishlist : []);
-
+      const data = await AsyncStorage.multiGet([KEYS.token, KEYS.userData, KEYS.wishlistTours]);
+      const map = Object.fromEntries(data);
+      const cachedUser = parse<UserData | null>(map[KEYS.userData], null);
+      setUser(cachedUser);
+      setWishlist(parse<unknown[]>(map[KEYS.wishlistTours], []).length);
+      const token = map[KEYS.token];
       if (token) {
         try {
-          const response = await fetch(apiUrl("/api/bookings/my-bookings"), {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          const [profileRes, bookingsRes, vendorRes] = await Promise.all([
+            fetch(apiUrl("/api/users/profile"), {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(apiUrl("/api/bookings/my-bookings"), {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(apiUrl("/api/vendor/application"), {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          ]);
 
-          const data = await response.json();
-          if (response.ok && data?.success && Array.isArray(data?.bookings)) {
-            setBookingCount(data.bookings.length);
-          } else {
-            setBookingCount(0);
+          const profileJson = await profileRes.json();
+          if (profileRes.ok && profileJson?.success && profileJson.user) {
+            const serverUser = profileJson.user;
+            setUser(serverUser);
+            await AsyncStorage.setItem(KEYS.userData, JSON.stringify(serverUser));
           }
+          const bookingsJson = await bookingsRes.json();
+          setBookings(bookingsRes.ok && bookingsJson?.success ? (bookingsJson.bookings?.length || 0) : 0);
+
+          const vendorJson = await vendorRes.json();
+          setVendorApp(
+            vendorRes.ok && vendorJson?.success && vendorJson.application
+              ? vendorJson.application
+              : null
+          );
         } catch {
-          setBookingCount(0);
+          setBookings(0);
+          setVendorApp(null);
         }
       } else {
-        setBookingCount(0);
+        setBookings(0);
+        setVendorApp(null);
       }
-    } catch {
-      setErrorText("Unable to load profile data. Pull to refresh.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadProfileData();
-    }, [loadProfileData])
-  );
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    loadProfileData();
-  }, [loadProfileData]);
+  const name = useMemo(() => user?.fullname || user?.name || "Explorer", [user]);
+  const email = useMemo(() => user?.email || user?.phone || "Not signed in", [user]);
+  const initial = name.charAt(0).toUpperCase();
 
-  const handleLogout = useCallback(() => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
+  const logout = () => {
+    Alert.alert("Sign out", "Are you sure?", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Logout",
+        text: "Sign out",
         style: "destructive",
         onPress: async () => {
-          try {
-            await AsyncStorage.multiRemove([
-              STORAGE_KEYS.token,
-              STORAGE_KEYS.userData,
-              STORAGE_KEYS.wishlistTours,
-            ]);
-            setUser(null);
-            setWishlist([]);
-            setBookingCount(0);
-            router.replace("/(auth)/login");
-          } catch {
-            Alert.alert("Error", "Failed to logout. Please try again.");
-          }
+          await AsyncStorage.multiRemove([KEYS.token, KEYS.userData, KEYS.wishlistTours]);
+          router.replace("/(auth)/login");
         },
       },
     ]);
-  }, [router]);
+  };
 
-  const displayName = useMemo(
-    () => user?.fullname?.trim() || user?.name?.trim() || "User",
-    [user]
-  );
-
-  const displayEmail = useMemo(
-    () => user?.email?.trim() || "No Email",
-    [user?.email]
-  );
-
-  const MenuItem = ({
+  const MenuRow = ({
     icon,
-    title,
-    right,
+    label,
     onPress,
+    right,
+    isFirst,
   }: {
     icon: keyof typeof Ionicons.glyphMap;
-    title: string;
-    right?: React.ReactNode;
+    label: string;
     onPress?: () => void;
+    right?: React.ReactNode;
+    isFirst?: boolean;
   }) => (
     <TouchableOpacity
-      style={styles.menuItem}
-      activeOpacity={0.75}
+      style={[styles.menuRow, !isFirst && styles.menuRowDivider]}
       onPress={onPress}
       disabled={!onPress}
+      activeOpacity={0.7}
     >
-      <Ionicons name={icon} size={20} color="#1E3A8A" />
-      <Text style={styles.menuText}>{title}</Text>
-      {right ?? <Ionicons name="chevron-forward" size={18} color="#C7C7C7" />}
+      <Ionicons name={icon} size={20} color={ExploreColors.primary} />
+      <Text style={styles.menuLabel}>{label}</Text>
+      {right ?? <Ionicons name="chevron-forward" size={18} color={ExploreColors.textMuted} />}
     </TouchableOpacity>
   );
 
+  if (loading) {
+    return (
+      <AppScreen variant="tab" style={styles.safe}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={ExploreColors.primary} />
+        </View>
+      </AppScreen>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F6F8FC" />
+    <AppScreen variant="tab" style={styles.safe}>
       <ScrollView
-        style={styles.container}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        contentContainerStyle={{ paddingBottom: scrollBottomPad }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={ExploreColors.primary} />}
       >
-        {loading ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#1E3A8A" />
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
           </View>
-        ) : (
-          <>
-            <View style={styles.headerCard}>
-              <View style={styles.avatar}>
-                <Ionicons name="person" size={42} color="#1E3A8A" />
-              </View>
-              <Text style={styles.name}>{displayName}</Text>
-              <Text style={styles.email}>{displayEmail}</Text>
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.email}>{email}</Text>
+        </View>
+
+        {vendorApp ? (
+          <TouchableOpacity
+            style={[styles.vendorBanner, { backgroundColor: VENDOR_STATUS[vendorApp.status].bg }]}
+            activeOpacity={0.85}
+            onPress={() => router.push("/becomeVendor")}
+          >
+            <View style={[styles.vendorBannerIcon, { backgroundColor: VENDOR_STATUS[vendorApp.status].color }]}>
+              <Ionicons name={VENDOR_STATUS[vendorApp.status].icon} size={22} color="#fff" />
             </View>
-
-            <View style={styles.statsCard}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{bookingCount}</Text>
-                <Text style={styles.statLabel}>Bookings</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{wishlistCount}</Text>
-                <Text style={styles.statLabel}>Wishlist</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>1</Text>
-                <Text style={styles.statLabel}>Online</Text>
-              </View>
+            <View style={styles.vendorBannerBody}>
+              <Text style={styles.vendorBannerTitle}>Partner application</Text>
+              <Text style={styles.vendorBannerSub} numberOfLines={2}>
+                {vendorApp.status === "approved"
+                  ? `${vendorApp.businessName || "Your business"} · Login credentials ready`
+                  : `${vendorApp.businessName || "Your business"} · Tap to view status`}
+              </Text>
             </View>
-
-
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Account</Text>
-
-              {/* <MenuItem icon="person-circle-outline" title="Personal Info" />
-              <MenuItem icon="lock-closed-outline" title="Change Password" />
-              <MenuItem icon="card-outline" title="Payment Methods" /> */}
-              <MenuItem
-                icon="briefcase-outline"
-                title="My Bookings"
-                onPress={() => router.push("/myBookings")}
-              />
-              <MenuItem
-                icon="heart-outline"
-                title="My Wishlist"
-                onPress={() => router.push("/wishlist")}
-              />
-
-              <View style={styles.menuItem}>
-                <Ionicons name="notifications-outline" size={20} color="#1E3A8A" />
-                <Text style={styles.menuText}>Notifications</Text>
-                <Switch
-                  value={notifications}
-                  onValueChange={setNotifications}
-                  trackColor={{ false: "#ccc", true: "#1E3A8A" }}
-                />
-              </View>
-
-              <MenuItem
-                icon="globe-outline"
-                title="Language"
-                right={<Text style={{ color: "#6B7280", marginRight: 5 }}>English</Text>}
-                onPress={() => {
-                  Alert.alert("Select Language", "Choose your preferred language", [
-                    { text: "English", onPress: () => {} },
-                    { text: "Hindi", onPress: () => {} },
-                    { text: "Spanish", onPress: () => {} },
-                    { text: "Cancel", style: "cancel" },
-                  ]);
-                }}
-              />
-              <MenuItem
-                icon="help-circle-outline"
-                title="Help & Support"
-                onPress={() => router.push("/help")}
-              />
+            <View style={[styles.vendorBadge, { borderColor: VENDOR_STATUS[vendorApp.status].color }]}>
+              <Text style={[styles.vendorBadgeText, { color: VENDOR_STATUS[vendorApp.status].color }]}>
+                {VENDOR_STATUS[vendorApp.status].label}
+              </Text>
             </View>
+          </TouchableOpacity>
+        ) : null}
 
-            {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+        <View style={styles.stats}>
+          {[
+            { n: bookings, l: "Bookings" },
+            { n: wishlist, l: "Wishlist" },
+          ].map((s, i) => (
+            <View key={s.l} style={[styles.stat, i === 0 && styles.statBorder]}>
+              <Text style={styles.statN}>{s.n}</Text>
+              <Text style={styles.statL}>{s.l}</Text>
+            </View>
+          ))}
+        </View>
 
-            <TouchableOpacity
-              style={styles.logoutBtn}
-              onPress={handleLogout}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="log-out-outline" size={20} color="#fff" />
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
+        <View style={styles.menuCard}>
+          {[
+            { icon: "briefcase-outline" as const, label: "My Bookings", onPress: () => router.push("/myBookings") },
+            { icon: "heart-outline" as const, label: "Wishlist", onPress: () => router.push("/wishlist") },
+            {
+              icon: "storefront-outline" as const,
+              label: vendorApp ? "Partner Application Status" : "Become a Vendor",
+              onPress: () => router.push("/becomeVendor"),
+              right: vendorApp ? (
+                <View style={[styles.menuBadge, { backgroundColor: VENDOR_STATUS[vendorApp.status].bg }]}>
+                  <Text style={[styles.menuBadgeText, { color: VENDOR_STATUS[vendorApp.status].color }]}>
+                    {VENDOR_STATUS[vendorApp.status].label}
+                  </Text>
+                </View>
+              ) : undefined,
+            },
+            { icon: "help-circle-outline" as const, label: "Help", onPress: () => router.push("/help") },
+          ].map((item, index) => (
+            <MenuRow
+              key={item.label}
+              icon={item.icon}
+              label={item.label}
+              onPress={item.onPress}
+              right={"right" in item ? item.right : undefined}
+              isFirst={index === 0}
+            />
+          ))}
+          <View style={[styles.menuRow, styles.menuRowDivider]}>
+            <Ionicons name="notifications-outline" size={20} color={ExploreColors.primary} />
+            <Text style={styles.menuLabel}>Notifications</Text>
+            <Switch value={notifications} onValueChange={setNotifications} trackColor={{ true: ExploreColors.primary }} />
+          </View>
+        </View>
 
-            <View style={{ height: 30 }} />
-          </>
-        )}
+        <TouchableOpacity style={styles.logout} onPress={logout}>
+          <Text style={styles.logoutText}>Sign Out</Text>
+        </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F6F8FC" },
-  container: { flex: 1 },
-
-  loaderContainer: {
-    height: 300,
-    justifyContent: "center",
+  safe: { flex: 1, backgroundColor: ExploreColors.background },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  profileCard: {
+    backgroundColor: ExploreColors.surface,
+    margin: Layout.pad,
+    borderRadius: Layout.radius,
+    padding: 24,
     alignItems: "center",
-  },
-
-  headerCard: {
-    alignItems: "center",
-    backgroundColor: "#fff",
-    margin: 16,
-    borderRadius: 18,
-    paddingVertical: 22,
-    elevation: 3,
+    ...ExploreShadow.card,
   },
   avatar: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    backgroundColor: "#EAF0FF",
-    justifyContent: "center",
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: ExploreColors.primarySoft,
     alignItems: "center",
-    marginBottom: 10,
+    justifyContent: "center",
+    marginBottom: 12,
   },
-  name: { fontSize: 20, fontWeight: "700", color: "#0F172A" },
-  email: { fontSize: 13, color: "#6B7280", marginTop: 2 },
-
-  statsCard: {
+  avatarText: { fontSize: 28, fontWeight: "800", color: ExploreColors.primary },
+  name: { fontSize: 20, fontWeight: "800", color: ExploreColors.text },
+  email: { fontSize: 13, color: ExploreColors.textSecondary, marginTop: 4 },
+  stats: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    borderRadius: 18,
-    paddingVertical: 14,
-    elevation: 2,
+    backgroundColor: ExploreColors.surface,
+    marginHorizontal: Layout.pad,
+    borderRadius: Layout.radius,
+    ...ExploreShadow.card,
   },
-  statBox: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 18, fontWeight: "700", color: "#1E3A8A" },
-  statLabel: { fontSize: 12, color: "#6B7280", marginTop: 3 },
-
-  card: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 18,
-    paddingBottom: 6,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#1E3A8A",
+  stat: { flex: 1, alignItems: "center", paddingVertical: 16 },
+  statBorder: { borderRightWidth: 1, borderRightColor: ExploreColors.borderLight },
+  statN: { fontSize: 20, fontWeight: "800", color: ExploreColors.primary },
+  statL: { fontSize: 12, color: ExploreColors.textSecondary, marginTop: 2 },
+  vendorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: Layout.pad,
+    marginTop: Layout.gap,
     padding: 14,
+    borderRadius: Layout.radius,
+    gap: 12,
+    ...ExploreShadow.card,
   },
-
-  wishlistHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  vendorBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
-  },
-  seeAllText: {
-    color: "#1E3A8A",
-    fontWeight: "600",
-    paddingHorizontal: 14,
-  },
-  emptyWishlistWrap: {
-    borderTopWidth: 1,
-    borderTopColor: "#F1F1F1",
-    padding: 16,
-    alignItems: "center",
-    gap: 8,
-  },
-  emptyWishlistText: {
-    color: "#6B7280",
-    fontSize: 13,
-  },
-
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F1F1",
-  },
-  menuText: { flex: 1, marginLeft: 10, fontSize: 14, color: "#111827" },
-
-  wishlistItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F1F1",
-  },
-  wishlistImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    marginRight: 12,
-    backgroundColor: "#E5E7EB",
-  },
-  wishlistTextWrap: { flex: 1 },
-  wishlistTitle: { fontSize: 14, fontWeight: "600", color: "#111827" },
-  wishlistSub: { fontSize: 12, color: "#6B7280", marginTop: 2 },
-
-  errorText: {
-    color: "#DC2626",
-    fontSize: 12,
-    marginTop: 12,
-    marginHorizontal: 16,
-  },
-
-  logoutBtn: {
-    flexDirection: "row",
-    backgroundColor: "#EF4444",
-    marginHorizontal: 16,
-    marginTop: 20,
-    paddingVertical: 14,
-    borderRadius: 14,
     justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    elevation: 3,
   },
-  logoutText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  vendorBannerBody: { flex: 1 },
+  vendorBannerTitle: { fontSize: 15, fontWeight: "700", color: ExploreColors.text },
+  vendorBannerSub: { fontSize: 12, color: ExploreColors.textSecondary, marginTop: 2 },
+  vendorBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    backgroundColor: ExploreColors.surface,
+  },
+  vendorBadgeText: { fontSize: 11, fontWeight: "800" },
+  menuBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  menuBadgeText: { fontSize: 11, fontWeight: "700" },
+  menuCard: {
+    backgroundColor: ExploreColors.surface,
+    marginHorizontal: Layout.pad,
+    marginTop: Layout.gap,
+    borderRadius: Layout.radius,
+    overflow: "hidden",
+    ...ExploreShadow.card,
+  },
+  menuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Layout.pad,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  menuRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: ExploreColors.borderLight,
+  },
+  menuLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: ExploreColors.text },
+  logout: {
+    marginHorizontal: Layout.pad,
+    marginTop: 20,
+    backgroundColor: ExploreColors.error,
+    paddingVertical: 14,
+    borderRadius: Layout.radiusSm,
+    alignItems: "center",
+  },
+  logoutText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

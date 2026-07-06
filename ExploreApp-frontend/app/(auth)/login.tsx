@@ -19,7 +19,9 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { apiUrl } from "../../constants/api";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -31,7 +33,6 @@ const STORAGE_KEYS = {
   wishlistTours: "wishlistTours",
 } as const;
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
 type LoginType = "email" | "phone";
@@ -130,7 +131,7 @@ export default function LoginScreen() {
   }, [googleResponse]);
 
   const ensureApiBaseUrl = () => {
-    if (!API_BASE_URL) {
+    if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
       Alert.alert(
         "Missing API URL",
         "Set EXPO_PUBLIC_API_BASE_URL in your env (example: http://192.168.1.8:5000)."
@@ -179,7 +180,7 @@ export default function LoginScreen() {
   const completeSocialLogin = async (profile: Record<string, any>) => {
     if (!ensureApiBaseUrl()) return;
 
-    const res = await fetch(`${API_BASE_URL}/api/auth/social-login`, {
+    const res = await fetch(apiUrl("/api/auth/social-login"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -214,7 +215,7 @@ export default function LoginScreen() {
           : { phone: emailOrPhone.trim() }),
       };
 
-      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const res = await fetch(apiUrl("/api/auth/login"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -308,6 +309,7 @@ export default function LoginScreen() {
       colors={["#F0F7FF", "#E8F4FF", "#F5F5F5"]}
       style={styles.gradient}
     >
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -494,12 +496,16 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   gradient: {
+    flex: 1,
+  },
+  safeArea: {
     flex: 1,
   },
 

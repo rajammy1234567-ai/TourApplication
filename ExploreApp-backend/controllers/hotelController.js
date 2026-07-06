@@ -48,3 +48,8 @@ exports.getMyHotels = asyncHandler(async (req, res) => {
   const hotels = await hotelService.getVendorHotels(req.vendor._id);
   res.json({ success: true, hotels });
 });
+
+exports.getVendorHotelById = asyncHandler(async (req, res) => {
+  const hotel = await hotelService.getVendorHotelById(req.vendor._id, req.params.id);
+  res.json({ success: true, hotel });
+});

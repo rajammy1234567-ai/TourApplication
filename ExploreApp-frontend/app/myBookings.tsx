@@ -10,7 +10,7 @@ import {
   View,
   Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { AppScreen } from "../components/explore/AppScreen";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import * as Print from "expo-print";
@@ -197,7 +197,7 @@ export default function MyBookings() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <AppScreen variant="stack" style={styles.safe}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
           <Ionicons name="chevron-back" size={22} color="#111" />
@@ -236,75 +236,88 @@ export default function MyBookings() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.packageName}>{item.packageName}</Text>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.status}>{item.bookingStatus}</Text>
-                </View>
-              </View>
+          renderItem={({ item }) => {
+            const isHotel = item.type === "hotel";
+            const peopleCount = isHotel
+              ? item.guests || item.travelers || 1
+              : (item.travelers || 0) + (item.children || 0);
+            const balance = item.remainingAmount ?? Math.max(0, (item.totalAmount || 0) - (item.paidAmount || 0));
 
-              <View style={styles.detailsRow}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="calendar-outline" size={14} color="#64748B" />
-                  <Text style={styles.detailText}>
-                    {new Date(item.startDate).toLocaleDateString()}
-                  </Text>
+            return (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.packageName}>{item.packageName}</Text>
+                    <Text style={styles.bookingType}>{isHotel ? "Hotel Stay" : "Tour Package"}</Text>
+                  </View>
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.status}>{item.bookingStatus}</Text>
+                  </View>
                 </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="people-outline" size={14} color="#64748B" />
-                  <Text style={styles.detailText}>
-                    {item.travelers + item.children} Travelers
-                  </Text>
-                </View>
-              </View>
 
-              <View style={styles.amountRow}>
-                <View>
-                  <Text style={styles.label}>Paid Amount</Text>
-                  <Text style={styles.value}>
-                    {formatCurrency(item.paidAmount)}
-                  </Text>
+                <View style={styles.detailsRow}>
+                  <View style={styles.detailItem}>
+                    <Ionicons name="calendar-outline" size={14} color="#64748B" />
+                    <Text style={styles.detailText}>
+                      {item.startDate
+                        ? `${new Date(item.startDate).toLocaleDateString()}${item.endDate ? ` → ${new Date(item.endDate).toLocaleDateString()}` : ""}`
+                        : "Dates TBA"}
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Ionicons name={isHotel ? "bed-outline" : "people-outline"} size={14} color="#64748B" />
+                    <Text style={styles.detailText}>
+                      {isHotel ? `${item.rooms || 1} room(s) · ${peopleCount} guest(s)` : `${peopleCount} travelers`}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.rightAmount}>
-                  <Text style={styles.label}>Balance Due</Text>
-                  <Text style={styles.remaining}>
-                    {formatCurrency(item.remainingAmount)}
-                  </Text>
-                </View>
-              </View>
 
-              <View style={styles.footer}>
-                <View>
-                  <Text style={styles.paymentStatus}>
-                    Payment ID: {item.razorpayPaymentId.slice(-8).toUpperCase()}
-                  </Text>
-                  <Text style={styles.date}>
-                    Booked on {new Date(item.createdAt).toLocaleDateString()}
-                  </Text>
+                <View style={styles.amountRow}>
+                  <View>
+                    <Text style={styles.label}>Paid Amount</Text>
+                    <Text style={styles.value}>{formatCurrency(item.paidAmount)}</Text>
+                  </View>
+                  <View style={styles.rightAmount}>
+                    <Text style={styles.label}>Balance Due</Text>
+                    <Text style={styles.remaining}>{formatCurrency(balance)}</Text>
+                  </View>
                 </View>
-                
-                <TouchableOpacity 
-                  style={[styles.downloadBtn, downloadingId === item._id && styles.downloadBtnDisabled]}
-                  onPress={() => handleDownloadInvoice(item)}
-                  disabled={downloadingId === item._id}
-                >
-                  {downloadingId === item._id ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="download-outline" size={16} color="#fff" />
-                      <Text style={styles.downloadText}>Invoice</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+
+                <View style={styles.footer}>
+                  <View>
+                    <Text style={styles.paymentStatus}>
+                      {item.razorpayPaymentId
+                        ? `Payment ID: ${item.razorpayPaymentId.slice(-8).toUpperCase()}`
+                        : item.paymentStatus || "Confirmed"}
+                    </Text>
+                    <Text style={styles.date}>
+                      Booked on {new Date(item.createdAt).toLocaleDateString()}
+                    </Text>
+                  </View>
+
+                  {!isHotel ? (
+                    <TouchableOpacity
+                      style={[styles.downloadBtn, downloadingId === item._id && styles.downloadBtnDisabled]}
+                      onPress={() => handleDownloadInvoice(item)}
+                      disabled={downloadingId === item._id}
+                    >
+                      {downloadingId === item._id ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <>
+                          <Ionicons name="download-outline" size={16} color="#fff" />
+                          <Text style={styles.downloadText}>Invoice</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </View>
-            </View>
-          )}
+            );
+          }}
         />
       )}
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 
@@ -360,7 +373,8 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
-  packageName: { flex: 1, fontSize: 16, fontWeight: "700", color: "#111827" },
+  packageName: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  bookingType: { fontSize: 12, color: "#64748B", marginTop: 2 },
   statusBadge: {
     backgroundColor: "#DCFCE7",
     paddingHorizontal: 8,

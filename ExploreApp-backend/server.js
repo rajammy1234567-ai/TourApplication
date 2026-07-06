@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 require("dotenv").config();
 const dns = require('dns');
 
@@ -29,7 +30,8 @@ const allowedOrigins = process.env.CORS_ORIGIN
   : true;
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "2mb" }));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/health", (req, res) => {
   res.json({ success: true, status: "ok" });
@@ -56,7 +58,7 @@ const startServer = async () => {
   await ensureDefaultVendor();
   await seedDemoVendorData();
 
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 5000;
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server is running on http://localhost:${PORT}`);
   });

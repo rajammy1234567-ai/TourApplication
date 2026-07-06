@@ -427,6 +427,25 @@ const updateListingStatus = async (type, listingId, status) => {
   if (!listing) {
     throw new ApiError(404, `${type} listing not found`);
   }
+
+  if (listing.vendorId && ["approved", "rejected"].includes(status)) {
+    const vendor = await Vendor.findById(listing.vendorId).select("userId businessName").lean();
+    if (vendor?.userId) {
+      const label = type === "hotel" ? "stay" : "tour";
+      await createUserNotification({
+        userId: vendor.userId,
+        type: status === "approved" ? "listing_approved" : "listing_rejected",
+        title: status === "approved" ? `${label} listing approved` : `${label} listing update`,
+        body:
+          status === "approved"
+            ? `Your ${label} "${listing.title}" is now live on Explore.`
+            : `Your ${label} "${listing.title}" was not approved. Contact admin or update and resubmit.`,
+        link: "/becomeVendor",
+        meta: { listingId: listing._id, listingType: type, status },
+      });
+    }
+  }
+
   return listing;
 };
 

@@ -8,7 +8,7 @@ import {
   Image,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { AppScreen } from "../components/explore/AppScreen";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -123,7 +123,7 @@ export default function WishlistScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <AppScreen variant="stack" style={styles.safe}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color="#111" />
@@ -158,7 +158,7 @@ export default function WishlistScreen() {
           contentContainerStyle={styles.list}
         />
       )}
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 

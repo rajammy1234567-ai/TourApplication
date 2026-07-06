@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   Dimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { AppScreen } from "../../components/explore/AppScreen";
+import { useAppInsets } from "../../hooks/use-app-insets";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { apiUrl } from "../../constants/api";
@@ -30,6 +31,7 @@ type CustomTour = {
 };
 
 export default function CustomizeTour() {
+  const { scrollBottomPad, footerBottomPad } = useAppInsets();
   const [tours, setTours] = useState<CustomTour[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -97,7 +99,7 @@ export default function CustomizeTour() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <AppScreen variant="tab" style={styles.safe}>
       <View style={styles.container}>
         {/* HEADER */}
         <View style={styles.topHeader}>
@@ -127,7 +129,7 @@ export default function CustomizeTour() {
               data={filteredData}
               keyExtractor={(item) => item._id}
               renderItem={renderTourItem}
-              contentContainerStyle={{ paddingBottom: 20 }}
+              contentContainerStyle={{ paddingBottom: scrollBottomPad }}
               ListEmptyComponent={
                 loading ? (
                   <ActivityIndicator size="large" color="#1E3A8A" style={{ marginTop: 100 }} />
@@ -142,7 +144,7 @@ export default function CustomizeTour() {
           </View>
         ) : (
           <View style={{ flex: 1 }}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: scrollBottomPad + 80 }}>
               <Image source={{ uri: selectedTour.image }} style={styles.heroImage} />
               
               <View style={styles.detailsContent}>
@@ -198,7 +200,7 @@ export default function CustomizeTour() {
             </ScrollView>
 
             {/* FLOATING FOOTER */}
-            <View style={styles.floatingFooter}>
+            <View style={[styles.floatingFooter, { bottom: footerBottomPad }]}>
               <View>
                 <Text style={styles.priceLabel}>Estimated Total</Text>
                 <Text style={styles.finalPrice}>₹{totalPrice.toLocaleString()}</Text>
@@ -224,7 +226,7 @@ export default function CustomizeTour() {
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 

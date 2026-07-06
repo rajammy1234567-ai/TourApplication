@@ -1,0 +1,105 @@
+---
+pid: 17460
+cwd: "D:\Programming\Explore"
+command: "cd \"D:\\Programming\\Explore\\ExploreApp-admin\"; npm run dev"
+started_at: 2026-07-06T10:13:14.270Z
+running_for_ms: 6385006  
+---
+
+> exploreapp-admin@0.0.0 dev
+> vite
+
+
+  VITE v8.1.3  ready in 208 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+3:50:30 pm [vite] (client) hmr update /src/components/ui/Badge.tsx
+3:50:30 pm [vite] (client) hmr update /src/pages/Listings.tsx
+3:50:30 pm [vite] (client) hmr update /src/App.css
+3:50:30 pm [vite] (client) hmr update /src/pages/Bookings.tsx
+3:50:35 pm [vite] (client) hmr update /src/App.css
+3:50:54 pm [vite] (client) hmr update /src/pages/Listings.tsx
+3:50:54 pm [vite] Internal server error: Transform failed with 3 errors:
+
+[PARSE_ERROR] Expected corresponding JSX closing tag for 'div'.
+     ╭─[ src/pages/Listings.tsx:188:25 ]
+     │
+ 169 │                         <div className="actions">
+     │                          ─┬─  
+     │                           ╰─── Opened here
+     │ 
+ 188 │                       </td>
+     │                         ─┬  
+     │                          ╰── Expected `</div>`
+─────╯
+
+[PARSE_ERROR] Expected corresponding JSX closing tag for 'td'.
+     ╭─[ src/pages/Listings.tsx:189:23 ]
+     │
+ 168 │                       <td>
+     │                        ─┬  
+     │                         ╰── Opened here
+     │ 
+ 189 │                     </tr>
+     │                       ─┬  
+     │                        ╰── Expected `</td>`
+─────╯
+
+[PARSE_ERROR] Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+     ╭─[ src/pages/Listings.tsx:190:21 ]
+     │
+ 190 │                   ))}
+     │                     │ 
+     │                     ╰─ 
+─────╯
+
+  Plugin: vite:oxc
+  File: D:/Programming/Explore/ExploreApp-admin/src/pages/Listings.tsx
+      at transformWithOxc (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:3661:19)
+      at TransformPluginContext.transform (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:3732:26)
+      at EnvironmentPluginContainer.transform (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:29745:51)
+      at async loadAndTransform (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:19729:26)
+      at async viteTransformMiddleware (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:24160:20)
+3:50:59 pm [vite] (client) hmr update /src/pages/Listings.tsx
+4:24:48 pm [vite] (client) hmr update /src/components/ui/Modal.tsx
+4:24:48 pm [vite] (client) hmr update /src/App.css
+4:25:00 pm [vite] (client) hmr update /src/pages/VendorApplications.tsx
+4:32:15 pm [vite] (client) hmr update /src/pages/VendorApplications.tsx
+4:32:15 pm [vite] (client) hmr update /src/pages/Vendors.tsx
+4:34:06 pm [vite] (client) hmr update /src/components/ui/Modal.tsx
+4:34:06 pm [vite] (client) hmr update /src/App.css
+4:34:17 pm [vite] (client) hmr update /src/pages/Vendors.tsx
+4:34:28 pm [vite] (client) hmr update /src/pages/Listings.tsx
+4:34:28 pm [vite] (client) hmr update /src/App.css
+4:34:28 pm [vite] Internal server error: Transform failed with 1 error:
+
+[PARSE_ERROR] Expected a semicolon or an implicit semicolon after a statement, but found none
+     ╭─[ src/pages/Listings.tsx:205:20 ]
+     │
+ 205 │                   ))}
+     │                    │ 
+     │                    ╰─ 
+     │ 
+     │ Help: Try inserting a semicolon here
+─────╯
+
+  Plugin: vite:oxc
+  File: D:/Programming/Explore/ExploreApp-admin/src/pages/Listings.tsx
+      at transformWithOxc (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:3661:19)
+      at TransformPluginContext.transform (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:3732:26)
+      at EnvironmentPluginContainer.transform (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:29745:51)
+      at async loadAndTransform (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:19729:26)
+      at async viteTransformMiddleware (file:///D:/Programming/Explore/ExploreApp-admin/node_modules/vite/dist/node/chunks/node.js:24160:20)
+4:34:28 pm [vite] (client) hmr update /src/pages/Listings.tsx
+4:34:36 pm [vite] (client) hmr update /src/pages/Listings.tsx
+4:50:34 pm [vite] (client) hmr update /src/components/partners/PartnerPortfolioView.tsx
+4:50:34 pm [vite] (client) hmr update /src/components/ui/Modal.tsx
+4:50:34 pm [vite] (client) hmr update /src/components/partners/PartnerPortfolioView.tsx
+4:50:44 pm [vite] (client) hmr update /src/App.css
+4:50:44 pm [vite] (client) hmr update /src/App.css
+4:50:52 pm [vite] (client) hmr update /src/App.css
+4:50:56 pm [vite] (client) hmr update /src/App.css
+4:51:06 pm [vite] (client) hmr update /src/pages/Vendors.tsx
+4:51:06 pm [vite] (client) hmr update /src/pages/Vendors.tsx
+4:51:06 pm [vite] (client) hmr update /src/pages/Vendors.tsx

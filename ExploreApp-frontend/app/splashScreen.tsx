@@ -65,7 +65,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onGetStarted }) => {
 
   return (
     <LinearGradient colors={['#EAF1FF', '#DCE8FF', '#F5F8FF']} style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
         
         <View style={styles.container}>
 

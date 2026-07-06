@@ -13,7 +13,8 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppScreen } from "../components/explore/AppScreen";
+import { useAppInsets } from "../hooks/use-app-insets";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { Calendar } from "react-native-calendars";
@@ -75,9 +76,12 @@ const loadRazorpayScript = () =>
 
 export default function BookNow() {
   const params = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
+  const { footerBottomPad } = useAppInsets();
+  const isHotel = String(params.type || "") === "hotel";
   const [travelers, setTravelers] = useState(1);
   const [children, setChildren] = useState(0);
+  const [rooms, setRooms] = useState(1);
+  const [guests, setGuests] = useState(2);
   const [meal, setMeal] = useState(false);
   const [photo, setPhoto] = useState(false);
   const [room, setRoom] = useState("1 Double Bed");
@@ -87,27 +91,39 @@ export default function BookNow() {
   const [endDate, setEndDate] = useState("");
   const [paying, setPaying] = useState(false);
 
-  const tour = useMemo(
+  const listing = useMemo(
     () => ({
       tourId: String(params.tourId || params.packageId || params.id || ""),
-      title: String(params.title || "Northern Lights Explorer"),
+      hotelId: String(params.hotelId || ""),
+      title: String(params.title || (isHotel ? "Hotel Stay" : "Northern Lights Explorer")),
       image: String(
         params.image || "https://images.unsplash.com/photo-1501785888041-af3ef285b470"
       ),
       rating: String(params.rating || "4.9"),
-      locationName: String(params.locationName || "Tromso, Norway"),
-      price: parsePrice(params.price || "15000"),
+      locationName: String(params.locationName || params.city || (isHotel ? "India" : "Tromso, Norway")),
+      price: parsePrice(params.price || (isHotel ? "3000" : "15000")),
     }),
-    [params]
+    [params, isHotel]
   );
 
+  const nights = useMemo(() => {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
+    const diff = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+    return diff > 0 ? diff : 0;
+  }, [startDate, endDate]);
+
   const totalPeople = travelers + children;
-  const adultsTotal = travelers * tour.price;
-  const childTotal = children * (tour.price * 0.5);
-  const mealTotal = meal ? totalPeople * 80 : 0;
-  const photoTotal = photo ? totalPeople * 50 : 0;
-  const taxes = (adultsTotal + childTotal) * 0.075;
-  const total = adultsTotal + childTotal + mealTotal + photoTotal + taxes;
+  const adultsTotal = isHotel ? 0 : travelers * listing.price;
+  const childTotal = isHotel ? 0 : children * (listing.price * 0.5);
+  const mealTotal = !isHotel && meal ? totalPeople * 80 : 0;
+  const photoTotal = !isHotel && photo ? totalPeople * 50 : 0;
+  const stayTotal = isHotel ? nights * listing.price * rooms : 0;
+  const taxes = isHotel ? stayTotal * 0.12 : (adultsTotal + childTotal) * 0.075;
+  const total = isHotel
+    ? stayTotal + taxes
+    : adultsTotal + childTotal + mealTotal + photoTotal + taxes;
   const advance = total * 0.1;
   const remaining = total - advance;
 
@@ -119,7 +135,7 @@ export default function BookNow() {
         selected: true, 
         startingDay: true, 
         endingDay: true, 
-        color: "#0F3B82", 
+        color: "#003D82", 
         textColor: "white" 
       };
       return dates;
@@ -135,8 +151,8 @@ export default function BookNow() {
         const isEnd = date === endDate;
         
         dates[date] = {
-          color: isStart || isEnd ? "#0F3B82" : "#EAF0FF",
-          textColor: isStart || isEnd ? "white" : "#0F3B82",
+          color: isStart || isEnd ? "#003D82" : "#EAF0FF",
+          textColor: isStart || isEnd ? "white" : "#003D82",
           startingDay: isStart,
           endingDay: isEnd,
         };
@@ -175,7 +191,7 @@ export default function BookNow() {
         razorpay_payment_id: paymentData.razorpay_payment_id,
         razorpay_signature: paymentData.razorpay_signature,
         userId: user?._id,
-        tourId: tour.tourId,
+        tourId: listing.tourId,
       }),
     });
 
@@ -193,7 +209,7 @@ export default function BookNow() {
       amount: order.amount,
       currency: order.currency,
       name: "Explore",
-      description: order.packageName || tour.title,
+      description: order.packageName || listing.title,
       order_id: order.orderId,
       prefill: {
         name: user?.fullname || "",
@@ -205,7 +221,7 @@ export default function BookNow() {
         card: true,
         netbanking: true,
       },
-      theme: { color: "#0F3B82" },
+      theme: { color: "#003D82" },
       handler: async (paymentData: any) => {
         await verifyPayment(paymentData, token, user);
         showAlert("Booking Confirmed", "Your 10% advance payment was successful.");
@@ -258,19 +274,50 @@ export default function BookNow() {
     }
   };
 
+  const handleHotelBooking = async (token: string) => {
+    const response = await fetch(apiUrl("/api/bookings/hotel"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        hotelId: listing.hotelId,
+        checkIn: startDate,
+        checkOut: endDate,
+        rooms,
+        guests,
+        roomType: room,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to reserve stay");
+    }
+
+    showAlert("Reservation Confirmed", "Your hotel stay has been booked.");
+    router.replace("/myBookings");
+  };
+
   const handlePayment = async () => {
     try {
       if (paying) return;
 
       if (!startDate || !endDate) {
-        showAlert("Please select travel dates");
+        showAlert(isHotel ? "Please select check-in and check-out dates" : "Please select travel dates");
+        return;
+      }
+
+      if (isHotel && nights <= 0) {
+        showAlert("Invalid stay", "Check-out must be after check-in.");
         return;
       }
 
       setPaying(true);
 
-    const token = await getStorageItem("token");
-    const userJson = await getStorageItem("userData");
+      const token = await getStorageItem("token");
+      const userJson = await getStorageItem("userData");
       const user = userJson ? JSON.parse(userJson) : null;
 
       if (!token) {
@@ -279,14 +326,19 @@ export default function BookNow() {
         return;
       }
 
-     const response = await fetch(apiUrl("/api/payment/create-order"), {
+      if (isHotel) {
+        await handleHotelBooking(token);
+        return;
+      }
+
+      const response = await fetch(apiUrl("/api/payment/create-order"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-     body: JSON.stringify({
-          tourId: tour.tourId,
+        body: JSON.stringify({
+          tourId: listing.tourId,
           userId: user?._id,
           bookingDetails: {
             startDate,
@@ -305,10 +357,39 @@ export default function BookNow() {
         throw new Error(order.message || "Unable to create payment order");
       }
 
+      if (order.demoMode) {
+        const demoRes = await fetch(apiUrl("/api/bookings/tour-demo"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            tourId: listing.tourId,
+            bookingDetails: {
+              startDate,
+              endDate,
+              travelers,
+              children,
+              meal,
+              photo,
+              room,
+            },
+          }),
+        });
+        const demoData = await demoRes.json();
+        if (!demoRes.ok || !demoData.success) {
+          throw new Error(demoData.message || "Demo booking failed");
+        }
+        showAlert("Booking Confirmed", "Tour booked successfully (demo mode).");
+        router.replace("/myBookings");
+        return;
+      }
+
       await openRazorpayCheckout(order, token, user);
     } catch (err: any) {
       console.log(err);
-      showAlert("Payment failed", err.message || "Please try again.");
+      showAlert(isHotel ? "Booking failed" : "Payment failed", err.message || "Please try again.");
     } finally {
       setPaying(false);
     }
@@ -318,80 +399,119 @@ export default function BookNow() {
     startDate && endDate ? `${startDate} to ${endDate}` : startDate || "Choose travel dates";
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
+    <AppScreen variant="stackFooter" style={styles.safe}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 + footerBottomPad }}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={22} color="#111" />
           </TouchableOpacity>
-          <Text style={styles.heading}>Booking Details</Text>
+          <Text style={styles.heading}>{isHotel ? "Reserve Stay" : "Booking Details"}</Text>
           <View style={{ width: 22 }} />
         </View>
 
         <View style={styles.card}>
           <Image 
-            source={{ uri: tour.image }} 
+            source={{ uri: listing.image }} 
             style={styles.cardImg} 
             contentFit="cover"
             transition={200}
           />
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{tour.title}</Text>
-            <Text style={styles.location}>{tour.locationName}</Text>
-            <Text style={styles.rating}>Rating {tour.rating}</Text>
+            <Text style={styles.cardTitle}>{listing.title}</Text>
+            <Text style={styles.location}>{listing.locationName}</Text>
+            {!isHotel ? <Text style={styles.rating}>Rating {listing.rating}</Text> : null}
           </View>
         </View>
 
         <TouchableOpacity style={styles.box} onPress={() => setDateModal(true)}>
-          <Ionicons name="calendar-outline" size={20} color="#0F3B82" />
+          <Ionicons name="calendar-outline" size={20} color="#003D82" />
           <View style={{ marginTop: 6 }}>
-            <Text style={styles.label}>Select Date</Text>
+            <Text style={styles.label}>{isHotel ? "Check-in / Check-out" : "Select Date"}</Text>
             <Text style={styles.value}>{rangeText}</Text>
           </View>
         </TouchableOpacity>
 
-        <Counter
-          label="Adults"
-          value={travelers}
-          onMinus={() => travelers > 1 && setTravelers(travelers - 1)}
-          onPlus={() => setTravelers(travelers + 1)}
-        />
-        <Counter
-          label="Children"
-          value={children}
-          onMinus={() => children > 0 && setChildren(children - 1)}
-          onPlus={() => setChildren(children + 1)}
-        />
-
-        <TouchableOpacity style={styles.box} onPress={() => setRoomModal(true)}>
-          <Text style={styles.value}>Room: {room}</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.section}>Optional Add-ons</Text>
-        <Addon title="Premium Meals (+80)" active={meal} onPress={() => setMeal(!meal)} />
-        <Addon title="Photography (+50)" active={photo} onPress={() => setPhoto(!photo)} />
+        {isHotel ? (
+          <>
+            <Counter
+              label="Rooms"
+              value={rooms}
+              onMinus={() => rooms > 1 && setRooms(rooms - 1)}
+              onPlus={() => setRooms(rooms + 1)}
+            />
+            <Counter
+              label="Guests"
+              value={guests}
+              onMinus={() => guests > 1 && setGuests(guests - 1)}
+              onPlus={() => setGuests(guests + 1)}
+            />
+            <TouchableOpacity style={styles.box} onPress={() => setRoomModal(true)}>
+              <Text style={styles.value}>Room type: {room}</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Counter
+              label="Adults"
+              value={travelers}
+              onMinus={() => travelers > 1 && setTravelers(travelers - 1)}
+              onPlus={() => setTravelers(travelers + 1)}
+            />
+            <Counter
+              label="Children"
+              value={children}
+              onMinus={() => children > 0 && setChildren(children - 1)}
+              onPlus={() => setChildren(children + 1)}
+            />
+            <TouchableOpacity style={styles.box} onPress={() => setRoomModal(true)}>
+              <Text style={styles.value}>Room: {room}</Text>
+            </TouchableOpacity>
+            <Text style={styles.section}>Optional Add-ons</Text>
+            <Addon title="Premium Meals (+80)" active={meal} onPress={() => setMeal(!meal)} />
+            <Addon title="Photography (+50)" active={photo} onPress={() => setPhoto(!photo)} />
+          </>
+        )}
 
         <Text style={styles.section}>Price Summary</Text>
         <View style={styles.summary}>
-          <Row label="Adults" value={adultsTotal} />
-          {children > 0 && <Row label="Children" value={childTotal} />}
-          {meal && <Row label="Meals" value={mealTotal} />}
-          {photo && <Row label="Photography" value={photoTotal} />}
-          <Row label="Taxes" value={taxes} />
+          {isHotel ? (
+            <>
+              <Row label={`${nights || 0} night(s) x ${rooms} room(s)`} value={stayTotal} />
+              <Row label="Taxes & fees" value={taxes} />
+            </>
+          ) : (
+            <>
+              <Row label="Adults" value={adultsTotal} />
+              {children > 0 && <Row label="Children" value={childTotal} />}
+              {meal && <Row label="Meals" value={mealTotal} />}
+              {photo && <Row label="Photography" value={photoTotal} />}
+              <Row label="Taxes" value={taxes} />
+            </>
+          )}
           <View style={styles.line} />
           <Row label="Total" value={total} big />
-          <Row label="Pay now (10%)" value={advance} highlight />
-          <Row label="Remaining pending" value={remaining} />
+          {isHotel ? (
+            <Row label="Due now" value={0} highlight />
+          ) : (
+            <>
+              <Row label="Pay now (10%)" value={advance} highlight />
+              <Row label="Remaining at trip" value={remaining} />
+            </>
+          )}
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16), height: 85 + insets.bottom }]}>
+      <View style={[styles.footer, { paddingBottom: footerBottomPad, height: 72 + footerBottomPad }]}>
         <View>
-          <Text style={styles.footerLabel}>Advance due</Text>
-          <Text style={styles.total}>{formatCurrency(advance)}</Text>
+          <Text style={styles.footerLabel}>{isHotel ? "Total stay" : "Advance due"}</Text>
+          <Text style={styles.total}>{formatCurrency(isHotel ? total : advance)}</Text>
         </View>
         <TouchableOpacity style={styles.payBtn} onPress={handlePayment} disabled={paying}>
-          {paying ? <ActivityIndicator color="#fff" /> : <Text style={styles.payText}>Pay 10%</Text>}
+          {paying ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.payText}>{isHotel ? "Reserve" : "Pay 10%"}</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -408,17 +528,17 @@ export default function BookNow() {
                 backgroundColor: "#ffffff",
                 calendarBackground: "#ffffff",
                 textSectionTitleColor: "#b6c1cd",
-                selectedDayBackgroundColor: "#0F3B82",
+                selectedDayBackgroundColor: "#003D82",
                 selectedDayTextColor: "#ffffff",
-                todayTextColor: "#0F3B82",
+                todayTextColor: "#003D82",
                 dayTextColor: "#2d4150",
                 textDisabledColor: "#d9e1e8",
-                dotColor: "#0F3B82",
+                dotColor: "#003D82",
                 selectedDotColor: "#ffffff",
-                arrowColor: "#0F3B82",
+                arrowColor: "#003D82",
                 disabledArrowColor: "#d9e1e8",
-                monthTextColor: "#0F3B82",
-                indicatorColor: "#0F3B82",
+                monthTextColor: "#003D82",
+                indicatorColor: "#003D82",
                 textDayFontWeight: "400",
                 textMonthFontWeight: "bold",
                 textDayHeaderFontWeight: "600",
@@ -466,7 +586,7 @@ export default function BookNow() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 
@@ -529,6 +649,9 @@ const styles = StyleSheet.create({
   location: { color: "#666", marginTop: 4 },
   rating: { color: "#f59e0b", marginTop: 4 },
   box: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
     marginHorizontal: 16,
     marginTop: 12,
     padding: 16,
@@ -552,7 +675,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: "#0F3B82",
+    backgroundColor: "#003D82",
     justifyContent: "center",
     alignItems: "center",
     marginHorizontal: 8,
@@ -578,8 +701,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
   line: { height: 1, backgroundColor: "#eee", marginVertical: 8 },
   bigText: { fontWeight: "700" },
-  bigPrice: { fontSize: 22, fontWeight: "700", color: "#0F3B82" },
-  highlightText: { color: "#0F3B82", fontWeight: "700" },
+  bigPrice: { fontSize: 22, fontWeight: "700", color: "#003D82" },
+  highlightText: { color: "#003D82", fontWeight: "700" },
   footer: {
     position: "absolute",
     left: 0,
@@ -594,10 +717,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   footerLabel: { color: "#666", fontSize: 12 },
-  total: { fontSize: 22, fontWeight: "700", color: "#0F3B82" },
+  total: { fontSize: 22, fontWeight: "700", color: "#003D82" },
   payBtn: {
     minWidth: 120,
-    backgroundColor: "#0F3B82",
+    backgroundColor: "#003D82",
     paddingHorizontal: 22,
     paddingVertical: 14,
     borderRadius: 8,
@@ -616,7 +739,7 @@ const styles = StyleSheet.create({
   modalFooter: { flexDirection: "row", gap: 12, marginTop: 15 },
   cancelBtn: { flex: 1, backgroundColor: "#F3F4F6", padding: 14, borderRadius: 14, alignItems: "center" },
   cancelText: { color: "#4B5563", fontWeight: "700" },
-  closeBtn: { flex: 2, backgroundColor: "#0F3B82", padding: 14, borderRadius: 14, alignItems: "center" },
+  closeBtn: { flex: 2, backgroundColor: "#003D82", padding: 14, borderRadius: 14, alignItems: "center" },
   closeText: { color: "#fff", fontWeight: "700" },
   roomItem: { paddingVertical: 16, borderBottomWidth: 1, borderColor: "#F3F4F6" },
 });

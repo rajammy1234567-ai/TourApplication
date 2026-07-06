@@ -36,6 +36,11 @@ exports.getMyTours = asyncHandler(async (req, res) => {
   res.json({ success: true, tours });
 });
 
+exports.getTourById = asyncHandler(async (req, res) => {
+  const tour = await vendorService.getVendorTourById(req.vendor._id, req.params.id);
+  res.json({ success: true, tour });
+});
+
 exports.createTour = asyncHandler(async (req, res) => {
   const tour = await vendorService.createTour(req.vendor._id, req.body);
   res.status(201).json({

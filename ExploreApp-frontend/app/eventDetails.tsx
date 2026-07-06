@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { AppScreen } from "../components/explore/AppScreen";
+import { useAppInsets } from "../hooks/use-app-insets";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 
@@ -27,6 +28,7 @@ const formatDateTime = (date?: string, time?: string) => {
 };
 
 export default function EventDetailsScreen() {
+  const { overlayTop, footerBottomPad } = useAppInsets();
   const params = useLocalSearchParams();
 
   const event = useMemo(() => {
@@ -38,14 +40,14 @@ export default function EventDetailsScreen() {
   }, [params.event]);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <AppScreen variant="hero" style={styles.safe}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: footerBottomPad + 16 }]}>
         <View style={styles.hero}>
           <Image
             source={{ uri: event.image || fallbackImage }}
             style={styles.image}
           />
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={[styles.backButton, { top: overlayTop }]} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={23} color="#111827" />
           </TouchableOpacity>
         </View>
@@ -74,18 +76,17 @@ export default function EventDetailsScreen() {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fff" },
-  content: { paddingBottom: 32 },
+  content: {},
   hero: { height: 310, backgroundColor: "#E2E8F0" },
   image: { width: "100%", height: "100%" },
   backButton: {
     position: "absolute",
-    top: 16,
     left: 16,
     width: 40,
     height: 40,
