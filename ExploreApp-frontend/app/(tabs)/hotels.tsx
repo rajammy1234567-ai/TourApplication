@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,6 +18,12 @@ import { ExploreColors, Layout } from "../../constants/exploreTheme";
 import { HotelCard, type HotelItem } from "../../components/explore/HotelCard";
 import { ScreenHeader } from "../../components/explore/ScreenHeader";
 import { SearchBar } from "../../components/explore/SearchBar";
+import {
+  CacheKeys,
+  isCacheFresh,
+  readCache,
+  writeCache,
+} from "../../lib/listCache";
 
 type PropertyFilter = {
   id: string;
@@ -43,32 +49,72 @@ export default function HotelsScreen() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [type, setType] = useState("All");
+  const requestId = useRef(0);
 
-  const fetchHotels = useCallback(async (q = "", t = "All") => {
+  const fetchHotels = useCallback(async (q = "", t = "All", opts?: { force?: boolean }) => {
+    const key = CacheKeys.hotels(q, t);
+    const id = ++requestId.current;
+
     try {
       setError("");
+      if (!opts?.force && isCacheFresh(key) && hotels.length > 0 && !q) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       const params = new URLSearchParams();
       if (q) params.set("search", q);
       if (t && t !== "All") params.set("propertyType", t);
       const query = params.toString();
       const data = await apiJson<{ hotels?: HotelItem[] }>(
-        `/api/hotels${query ? `?${query}` : ""}`
+        `/api/hotels${query ? `?${query}` : ""}`,
+        { timeoutMs: 20000 }
       );
-      setHotels(Array.isArray(data.hotels) ? data.hotels : []);
+      if (id !== requestId.current) return;
+      const next = Array.isArray(data.hotels) ? data.hotels : [];
+      setHotels(next);
+      await writeCache(key, next);
     } catch (e: any) {
-      setError(e?.message || "Could not load stays");
-      setHotels([]);
+      if (id !== requestId.current) return;
+      if (hotels.length === 0) {
+        setError(e?.message || "Could not load stays");
+        setHotels([]);
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (id === requestId.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
+  }, [hotels.length]);
+
+  // Instant cache for default list
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const cached = await readCache<HotelItem[]>(CacheKeys.hotels("", "All"));
+      if (cancelled) return;
+      if (cached?.length) {
+        setHotels(cached);
+        setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // Debounced fetch on search / type
   useEffect(() => {
-    setLoading(true);
-    const id = setTimeout(() => fetchHotels(search.trim(), type), 300);
+    const hasData = hotels.length > 0;
+    if (!hasData) setLoading(true);
+    const id = setTimeout(() => {
+      fetchHotels(search.trim(), type, { force: true });
+    }, search.trim() ? 350 : 0);
     return () => clearTimeout(id);
-  }, [search, type, fetchHotels]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, type]);
 
   return (
     <AppScreen variant="tab" style={styles.safe}>
@@ -76,7 +122,11 @@ export default function HotelsScreen() {
       <ScreenHeader title="Stays" subtitle="Hotels & homestays" icon="bed" />
 
       <View style={styles.searchWrap}>
-        <SearchBar value={search} onChangeText={setSearch} placeholder="Search city or stay..." />
+        <SearchBar
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search city or stay..."
+        />
       </View>
 
       <View style={styles.chipBar}>
@@ -119,13 +169,13 @@ export default function HotelsScreen() {
           <View style={styles.emptyIcon}>
             <Ionicons name="cloud-offline-outline" size={30} color={ExploreColors.primary} />
           </View>
-          <Text style={styles.emptyTitle}>Couldn’t load stays</Text>
-          <Text style={styles.emptySub}>{error}</Text>
+          <Text style={styles.errTitle}>Couldn&apos;t load stays</Text>
+          <Text style={styles.err}>{error}</Text>
           <TouchableOpacity
-            style={styles.retryBtn}
+            style={styles.retry}
             onPress={() => {
               setLoading(true);
-              fetchHotels(search.trim(), type);
+              fetchHotels(search.trim(), type, { force: true });
             }}
           >
             <Text style={styles.retryText}>Retry</Text>
@@ -143,32 +193,24 @@ export default function HotelsScreen() {
             hotels.length === 0 && styles.listEmpty,
           ]}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
-                fetchHotels(search.trim(), type);
+                fetchHotels(search.trim(), type, { force: true });
               }}
               tintColor={ExploreColors.primary}
             />
           }
           ListEmptyComponent={
             <View style={styles.center}>
-              <View style={styles.emptyIcon}>
-                <Ionicons name="bed-outline" size={32} color={ExploreColors.primary} />
-              </View>
-              <Text style={styles.emptyTitle}>No stays found</Text>
-              <Text style={styles.emptySub}>
-                {type === "All"
-                  ? "Approved partner stays will appear here"
-                  : `No ${type} listings — try All`}
-              </Text>
-              {type !== "All" && (
-                <TouchableOpacity style={styles.retryBtn} onPress={() => setType("All")}>
-                  <Text style={styles.retryText}>Show all stays</Text>
-                </TouchableOpacity>
-              )}
+              <Ionicons name="bed-outline" size={36} color={ExploreColors.textMuted} />
+              <Text style={styles.empty}>No stays found</Text>
             </View>
           }
         />
@@ -179,102 +221,55 @@ export default function HotelsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: ExploreColors.background },
-  searchWrap: {
-    paddingHorizontal: Layout.pad,
-    marginBottom: 10,
-  },
-  chipBar: {
-    marginBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ExploreColors.border,
-    backgroundColor: ExploreColors.background,
-  },
-  chipScroll: {
-    flexGrow: 0,
-  },
-  chipRow: {
-    paddingHorizontal: Layout.pad,
-    paddingBottom: 12,
-    gap: 8,
-    alignItems: "center",
-  },
+  searchWrap: { paddingHorizontal: Layout.pad, marginBottom: 8 },
+  chipBar: { marginBottom: 8 },
+  chipScroll: { flexGrow: 0 },
+  chipRow: { paddingHorizontal: Layout.pad, gap: 8 },
   chip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    minHeight: 38,
-    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: ExploreColors.surface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: ExploreColors.border,
   },
   chipOn: {
     backgroundColor: ExploreColors.primary,
     borderColor: ExploreColors.primary,
   },
-  chipText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: ExploreColors.text,
-  },
-  chipTextOn: {
-    color: "#fff",
-  },
+  chipText: { fontSize: 13, fontWeight: "700", color: ExploreColors.primary },
+  chipTextOn: { color: "#fff" },
   listFlex: { flex: 1 },
-  list: {
-    paddingHorizontal: Layout.pad,
-    paddingTop: 4,
-  },
-  listEmpty: {
-    flexGrow: 1,
-  },
+  list: { paddingHorizontal: Layout.pad },
+  listEmpty: { flexGrow: 1 },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
-    paddingTop: 48,
+    padding: 32,
     gap: 8,
   },
-  loadingText: {
-    marginTop: 8,
-    fontSize: 13,
-    color: ExploreColors.textSecondary,
-    fontWeight: "500",
-  },
+  loadingText: { marginTop: 8, color: ExploreColors.textSecondary, fontSize: 13 },
   emptyIcon: {
     width: 64,
     height: 64,
-    borderRadius: 20,
+    borderRadius: 32,
     backgroundColor: ExploreColors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: ExploreColors.text,
-    textAlign: "center",
-  },
-  emptySub: {
-    fontSize: 13,
-    color: ExploreColors.textSecondary,
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  retryBtn: {
-    marginTop: 12,
+  errTitle: { fontSize: 16, fontWeight: "800", color: ExploreColors.text },
+  err: { color: ExploreColors.textSecondary, textAlign: "center", fontSize: 13 },
+  retry: {
+    marginTop: 10,
     backgroundColor: ExploreColors.primary,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 12,
   },
-  retryText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13,
-  },
+  retryText: { color: "#fff", fontWeight: "800" },
+  empty: { color: ExploreColors.textSecondary },
 });

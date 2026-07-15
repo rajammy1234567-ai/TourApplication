@@ -11,7 +11,7 @@ export function Modal({
   description?: string;
   children?: React.ReactNode;
   onClose: () => void;
-  actions: React.ReactNode;
+  actions?: React.ReactNode;
   wide?: boolean;
   xl?: boolean;
 }) {
@@ -25,7 +25,7 @@ export function Modal({
           {description ? <p>{description}</p> : null}
         </div>
         {children ? <div className="modal-body">{children}</div> : null}
-        <div className="modal-actions">{actions}</div>
+        {actions ? <div className="modal-actions">{actions}</div> : null}
       </div>
     </div>
   );

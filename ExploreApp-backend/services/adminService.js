@@ -507,6 +507,183 @@ const deleteUser = async (userId) => {
   return user;
 };
 
+const parseGallery = (gallery) => {
+  if (Array.isArray(gallery)) return gallery.map(String).map((s) => s.trim()).filter(Boolean);
+  if (typeof gallery === "string") {
+    return gallery
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+const parseAmenities = (amenities) => {
+  if (Array.isArray(amenities)) return amenities.map(String).map((s) => s.trim()).filter(Boolean);
+  if (typeof amenities === "string") {
+    return amenities
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+/** Admin creates tour (optionally assigned to a vendor). Goes live when approved. */
+const adminCreateTour = async (data = {}) => {
+  const title = String(data.title || "").trim();
+  const price = Number(data.price);
+  if (!title) throw new ApiError(400, "Tour title is required");
+  if (!Number.isFinite(price) || price < 0) throw new ApiError(400, "Valid price is required");
+
+  const gallery = parseGallery(data.gallery);
+  const image = String(data.image || gallery[0] || "").trim() || undefined;
+
+  const tour = await Tour.create({
+    title,
+    packageId: data.packageId ? String(data.packageId).trim() : undefined,
+    location: String(data.location || "").trim() || undefined,
+    duration: String(data.duration || "").trim() || undefined,
+    people: String(data.people || "").trim() || undefined,
+    price,
+    image,
+    gallery,
+    description: String(data.description || "").trim() || undefined,
+    category: data.category || "Other",
+    amenities: parseAmenities(data.amenities),
+    latitude: data.latitude != null && data.latitude !== "" ? Number(data.latitude) : undefined,
+    longitude: data.longitude != null && data.longitude !== "" ? Number(data.longitude) : undefined,
+    vendorId: data.vendorId || undefined,
+    status: data.status || "approved",
+    rating: data.rating != null && data.rating !== "" ? Number(data.rating) : 0,
+  });
+
+  return Tour.findById(tour._id)
+    .populate("vendorId", "businessName ownerName phone email city state address businessType")
+    .lean();
+};
+
+const adminUpdateTour = async (tourId, data = {}) => {
+  const tour = await Tour.findById(tourId);
+  if (!tour) throw new ApiError(404, "Tour not found");
+
+  const fields = [
+    "title", "packageId", "location", "duration", "people", "price", "image",
+    "description", "category", "latitude", "longitude", "status", "rating", "vendorId",
+  ];
+  fields.forEach((key) => {
+    if (data[key] === undefined) return;
+    if (key === "price" || key === "rating" || key === "latitude" || key === "longitude") {
+      if (data[key] === "" || data[key] === null) {
+        if (key === "vendorId") tour.vendorId = undefined;
+        else if (key === "latitude" || key === "longitude") tour[key] = undefined;
+        else if (key === "rating") tour.rating = 0;
+        return;
+      }
+      tour[key] = Number(data[key]);
+    } else if (key === "vendorId") {
+      tour.vendorId = data.vendorId || undefined;
+    } else {
+      tour[key] = typeof data[key] === "string" ? data[key].trim() : data[key];
+    }
+  });
+  if (data.gallery !== undefined) tour.gallery = parseGallery(data.gallery);
+  if (data.amenities !== undefined) tour.amenities = parseAmenities(data.amenities);
+  if (!tour.image && tour.gallery?.length) tour.image = tour.gallery[0];
+
+  await tour.save();
+  return Tour.findById(tour._id)
+    .populate("vendorId", "businessName ownerName phone email city state address businessType")
+    .lean();
+};
+
+const adminDeleteTour = async (tourId) => {
+  const tour = await Tour.findByIdAndDelete(tourId);
+  if (!tour) throw new ApiError(404, "Tour not found");
+  return tour;
+};
+
+const adminCreateHotel = async (data = {}) => {
+  const title = String(data.title || "").trim();
+  const pricePerNight = Number(data.pricePerNight);
+  if (!title) throw new ApiError(400, "Hotel title is required");
+  if (!Number.isFinite(pricePerNight) || pricePerNight < 0) {
+    throw new ApiError(400, "Valid price per night is required");
+  }
+
+  const gallery = parseGallery(data.gallery);
+  const image = String(data.image || gallery[0] || "").trim() || undefined;
+
+  const hotel = await Hotel.create({
+    title,
+    description: String(data.description || "").trim() || undefined,
+    location: String(data.location || "").trim() || undefined,
+    city: String(data.city || "").trim() || undefined,
+    state: String(data.state || "").trim() || undefined,
+    propertyType: data.propertyType || "hotel",
+    image,
+    gallery,
+    pricePerNight,
+    bedrooms: data.bedrooms != null ? Number(data.bedrooms) : 1,
+    bathrooms: data.bathrooms != null ? Number(data.bathrooms) : 1,
+    maxGuests: data.maxGuests != null ? Number(data.maxGuests) : 2,
+    amenities: parseAmenities(data.amenities),
+    checkInTime: String(data.checkInTime || "14:00").trim(),
+    checkOutTime: String(data.checkOutTime || "11:00").trim(),
+    latitude: data.latitude != null && data.latitude !== "" ? Number(data.latitude) : undefined,
+    longitude: data.longitude != null && data.longitude !== "" ? Number(data.longitude) : undefined,
+    vendorId: data.vendorId || undefined,
+    status: data.status || "approved",
+    rating: data.rating != null && data.rating !== "" ? Number(data.rating) : 0,
+  });
+
+  return Hotel.findById(hotel._id)
+    .populate("vendorId", "businessName ownerName phone email city state address businessType")
+    .lean();
+};
+
+const adminUpdateHotel = async (hotelId, data = {}) => {
+  const hotel = await Hotel.findById(hotelId);
+  if (!hotel) throw new ApiError(404, "Hotel not found");
+
+  const fields = [
+    "title", "description", "location", "city", "state", "propertyType", "image",
+    "pricePerNight", "bedrooms", "bathrooms", "maxGuests", "checkInTime", "checkOutTime",
+    "latitude", "longitude", "status", "rating", "vendorId",
+  ];
+  fields.forEach((key) => {
+    if (data[key] === undefined) return;
+    if (
+      ["pricePerNight", "bedrooms", "bathrooms", "maxGuests", "latitude", "longitude", "rating"].includes(key)
+    ) {
+      if (data[key] === "" || data[key] === null) {
+        if (key === "latitude" || key === "longitude") hotel[key] = undefined;
+        else if (key === "rating") hotel.rating = 0;
+        return;
+      }
+      hotel[key] = Number(data[key]);
+    } else if (key === "vendorId") {
+      hotel.vendorId = data.vendorId || undefined;
+    } else {
+      hotel[key] = typeof data[key] === "string" ? data[key].trim() : data[key];
+    }
+  });
+  if (data.gallery !== undefined) hotel.gallery = parseGallery(data.gallery);
+  if (data.amenities !== undefined) hotel.amenities = parseAmenities(data.amenities);
+  if (!hotel.image && hotel.gallery?.length) hotel.image = hotel.gallery[0];
+
+  await hotel.save();
+  return Hotel.findById(hotel._id)
+    .populate("vendorId", "businessName ownerName phone email city state address businessType")
+    .lean();
+};
+
+const adminDeleteHotel = async (hotelId) => {
+  const hotel = await Hotel.findByIdAndDelete(hotelId);
+  if (!hotel) throw new ApiError(404, "Hotel not found");
+  return hotel;
+};
+
 module.exports = {
   ensureDefaultAdmin,
   adminLogin,
@@ -524,5 +701,11 @@ module.exports = {
   getAllTours,
   getAllHotels,
   deleteUser,
+  adminCreateTour,
+  adminUpdateTour,
+  adminDeleteTour,
+  adminCreateHotel,
+  adminUpdateHotel,
+  adminDeleteHotel,
   toSafeAdmin,
 };

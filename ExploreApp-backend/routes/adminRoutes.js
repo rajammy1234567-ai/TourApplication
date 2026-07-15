@@ -16,6 +16,12 @@ const {
   getBookings,
   getTours,
   getHotels,
+  createTour,
+  updateTour,
+  deleteTour,
+  createHotel,
+  updateHotel,
+  deleteHotel,
   getProfile,
 } = require("../controllers/adminController");
 
@@ -39,7 +45,15 @@ router.patch("/vendors/:id/status", toggleVendor);
 router.patch("/vendors/:id/password", resetVendorPassword);
 
 router.get("/tours", getTours);
+router.post("/tours", createTour);
+router.put("/tours/:id", updateTour);
+router.delete("/tours/:id", deleteTour);
+
 router.get("/hotels", getHotels);
+router.post("/hotels", createHotel);
+router.put("/hotels/:id", updateHotel);
+router.delete("/hotels/:id", deleteHotel);
+
 router.patch("/listings/:type/:id/status", updateListingStatus);
 
 router.get("/bookings", getBookings);

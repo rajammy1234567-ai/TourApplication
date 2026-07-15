@@ -18,6 +18,9 @@ export function SafeImage({ uri, fallback, onError, ...props }: SafeImageProps) 
     <Image
       {...props}
       source={{ uri: src }}
+      cachePolicy="memory-disk"
+      recyclingKey={src}
+      transition={props.transition ?? 120}
       onError={(event) => {
         if (src !== fallback) setSrc(fallback);
         onError?.(event);

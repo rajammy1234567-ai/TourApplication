@@ -14,17 +14,36 @@ const publicVisibilityFilter = () => ({
   ],
 });
 
-const withCoverImage = (hotel) => {
+const withCoverImage = (hotel, { list = false } = {}) => {
   if (!hotel) return hotel;
   const gallery = Array.isArray(hotel.gallery) ? hotel.gallery.filter(Boolean) : [];
+  const image = hotel.image || gallery[0] || undefined;
+  if (list) {
+    return {
+      _id: hotel._id,
+      title: hotel.title,
+      image,
+      location: hotel.location,
+      city: hotel.city,
+      state: hotel.state,
+      propertyType: hotel.propertyType,
+      pricePerNight: hotel.pricePerNight,
+      bedrooms: hotel.bedrooms,
+      bathrooms: hotel.bathrooms,
+      maxGuests: hotel.maxGuests,
+      rating: hotel.rating,
+      status: hotel.status,
+      createdAt: hotel.createdAt,
+    };
+  }
   return {
     ...hotel,
-    image: hotel.image || gallery[0] || undefined,
+    image,
     gallery,
   };
 };
 
-const getHotels = async ({ search, city, propertyType, page = 1, limit = 50 } = {}) => {
+const getHotels = async ({ search, city, propertyType, page = 1, limit = 40 } = {}) => {
   const and = [publicVisibilityFilter()];
 
   if (search && String(search).trim()) {
@@ -50,16 +69,19 @@ const getHotels = async ({ search, city, propertyType, page = 1, limit = 50 } = 
   }
 
   const filter = and.length === 1 ? and[0] : { $and: and };
-  const skip = (Math.max(1, page) - 1) * limit;
+  const safeLimit = Math.min(limit, 60);
+  const skip = (Math.max(1, page) - 1) * safeLimit;
 
   const hotels = await Hotel.find(filter)
-    .select("-__v")
+    .select(
+      "title image gallery location city state propertyType pricePerNight bedrooms bathrooms maxGuests rating status createdAt"
+    )
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit)
+    .limit(safeLimit)
     .lean();
 
-  return hotels.map(withCoverImage);
+  return hotels.map((h) => withCoverImage(h, { list: true }));
 };
 
 const getHotelById = async (hotelId) => {

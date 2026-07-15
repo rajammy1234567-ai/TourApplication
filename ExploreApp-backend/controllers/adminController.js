@@ -94,6 +94,36 @@ exports.getHotels = asyncHandler(async (req, res) => {
   res.json({ success: true, hotels });
 });
 
+exports.createTour = asyncHandler(async (req, res) => {
+  const tour = await adminService.adminCreateTour(req.body);
+  res.status(201).json({ success: true, message: "Tour created", tour });
+});
+
+exports.updateTour = asyncHandler(async (req, res) => {
+  const tour = await adminService.adminUpdateTour(req.params.id, req.body);
+  res.json({ success: true, message: "Tour updated", tour });
+});
+
+exports.deleteTour = asyncHandler(async (req, res) => {
+  await adminService.adminDeleteTour(req.params.id);
+  res.json({ success: true, message: "Tour deleted" });
+});
+
+exports.createHotel = asyncHandler(async (req, res) => {
+  const hotel = await adminService.adminCreateHotel(req.body);
+  res.status(201).json({ success: true, message: "Hotel created", hotel });
+});
+
+exports.updateHotel = asyncHandler(async (req, res) => {
+  const hotel = await adminService.adminUpdateHotel(req.params.id, req.body);
+  res.json({ success: true, message: "Hotel updated", hotel });
+});
+
+exports.deleteHotel = asyncHandler(async (req, res) => {
+  await adminService.adminDeleteHotel(req.params.id);
+  res.json({ success: true, message: "Hotel deleted" });
+});
+
 exports.getProfile = asyncHandler(async (req, res) => {
   res.json({
     success: true,

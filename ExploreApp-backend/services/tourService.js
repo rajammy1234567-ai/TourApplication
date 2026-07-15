@@ -15,12 +15,30 @@ const publicVisibilityFilter = () => ({
   ],
 });
 
-const withCoverImage = (tour) => {
+const withCoverImage = (tour, { list = false } = {}) => {
   if (!tour) return tour;
   const gallery = Array.isArray(tour.gallery) ? tour.gallery.filter(Boolean) : [];
+  const image = tour.image || gallery[0] || undefined;
+  // List endpoints: tiny payload (no full gallery / long unused fields)
+  if (list) {
+    return {
+      _id: tour._id,
+      title: tour.title,
+      packageId: tour.packageId,
+      image,
+      location: tour.location,
+      duration: tour.duration,
+      people: tour.people,
+      rating: tour.rating,
+      price: tour.price,
+      category: tour.category,
+      status: tour.status,
+      createdAt: tour.createdAt,
+    };
+  }
   return {
     ...tour,
-    image: tour.image || gallery[0] || undefined,
+    image,
     gallery,
   };
 };
@@ -38,7 +56,7 @@ const getTourFilter = (tourId) => {
   return { $or: filters };
 };
 
-const getTours = async ({ search, page = 1, limit = 50 } = {}) => {
+const getTours = async ({ search, page = 1, limit = 40 } = {}) => {
   const and = [publicVisibilityFilter()];
 
   if (search && String(search).trim()) {
@@ -55,18 +73,18 @@ const getTours = async ({ search, page = 1, limit = 50 } = {}) => {
   }
 
   const filter = and.length === 1 ? and[0] : { $and: and };
-  const skip = (Math.max(1, page) - 1) * limit;
+  const skip = (Math.max(1, page) - 1) * Math.min(limit, 60);
 
   const tours = await Tour.find(filter)
     .select(
-      "title packageId image location duration people rating price category gallery description amenities status vendorId createdAt"
+      "title packageId image location duration people rating price category gallery status createdAt"
     )
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit)
+    .limit(Math.min(limit, 60))
     .lean();
 
-  return tours.map(withCoverImage);
+  return tours.map((t) => withCoverImage(t, { list: true }));
 };
 
 const getTourById = async (tourId) => {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -17,6 +17,12 @@ import { ExploreColors, Layout } from "../../constants/exploreTheme";
 import { ScreenHeader } from "../../components/explore/ScreenHeader";
 import { TourListCard } from "../../components/explore/TourListCard";
 import type { TourItem } from "../../components/explore/TourHorizontalCard";
+import {
+  CacheKeys,
+  isCacheFresh,
+  readCache,
+  writeCache,
+} from "../../lib/listCache";
 
 export default function DiscoverTours() {
   const { scrollBottomPad } = useAppInsets();
@@ -24,24 +30,61 @@ export default function DiscoverTours() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const inflight = useRef<Promise<void> | null>(null);
 
-  const fetchTours = useCallback(async () => {
-    try {
-      setError("");
-      const data = await apiJson<{ tours?: TourItem[] }>("/api/tours");
-      setTours(Array.isArray(data.tours) ? data.tours : []);
-    } catch (e: any) {
-      setTours([]);
-      setError(e?.message || "Could not load tours");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const fetchTours = useCallback(async (opts?: { force?: boolean }) => {
+    if (inflight.current && !opts?.force) return inflight.current;
+
+    const run = async () => {
+      try {
+        setError("");
+        // Skip network if cache is still fresh (tab revisit)
+        if (!opts?.force && isCacheFresh(CacheKeys.tours) && tours.length > 0) {
+          setLoading(false);
+          setRefreshing(false);
+          return;
+        }
+
+        const data = await apiJson<{ tours?: TourItem[] }>("/api/tours", {
+          timeoutMs: 20000,
+        });
+        const next = Array.isArray(data.tours) ? data.tours : [];
+        setTours(next);
+        await writeCache(CacheKeys.tours, next);
+      } catch (e: any) {
+        if (tours.length === 0) {
+          setError(e?.message || "Could not load tours");
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        inflight.current = null;
+      }
+    };
+
+    inflight.current = run();
+    return inflight.current;
+  }, [tours.length]);
 
   useEffect(() => {
-    fetchTours();
-  }, [fetchTours]);
+    let cancelled = false;
+    (async () => {
+      const cached = await readCache<TourItem[]>(CacheKeys.tours);
+      if (cancelled) return;
+      if (cached?.length) {
+        setTours(cached);
+        setLoading(false);
+        // Background revalidate
+        fetchTours({ force: !isCacheFresh(CacheKeys.tours) });
+      } else {
+        fetchTours({ force: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AppScreen variant="tab" style={styles.safe}>
@@ -58,13 +101,13 @@ export default function DiscoverTours() {
           <View style={styles.emptyIcon}>
             <Ionicons name="cloud-offline-outline" size={30} color={ExploreColors.primary} />
           </View>
-          <Text style={styles.errTitle}>Couldn’t load tours</Text>
+          <Text style={styles.errTitle}>Couldn&apos;t load tours</Text>
           <Text style={styles.err}>{error}</Text>
           <TouchableOpacity
             style={styles.retry}
             onPress={() => {
               setLoading(true);
-              fetchTours();
+              fetchTours({ force: true });
             }}
           >
             <Text style={styles.retryText}>Retry</Text>
@@ -82,12 +125,16 @@ export default function DiscoverTours() {
             tours.length === 0 && styles.listEmpty,
           ]}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
-                fetchTours();
+                fetchTours({ force: true });
               }}
               tintColor={ExploreColors.primary}
             />
@@ -121,27 +168,22 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 64,
     height: 64,
-    borderRadius: 20,
+    borderRadius: 32,
     backgroundColor: ExploreColors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  errTitle: { fontSize: 16, fontWeight: "700", color: ExploreColors.text },
-  err: {
-    color: ExploreColors.textSecondary,
-    fontWeight: "500",
-    textAlign: "center",
-    lineHeight: 20,
-  },
+  errTitle: { fontSize: 16, fontWeight: "800", color: ExploreColors.text },
+  err: { color: ExploreColors.textSecondary, textAlign: "center", fontSize: 13 },
   retry: {
+    marginTop: 10,
     backgroundColor: ExploreColors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: Layout.radiusSm,
-    marginTop: 10,
+    borderRadius: 12,
   },
-  retryText: { color: "#fff", fontWeight: "700" },
-  empty: { color: ExploreColors.text, fontWeight: "700", fontSize: 15 },
-  emptySub: { color: ExploreColors.textSecondary, fontSize: 13 },
+  retryText: { color: "#fff", fontWeight: "800" },
+  empty: { color: ExploreColors.textSecondary, fontWeight: "600" },
+  emptySub: { color: ExploreColors.textMuted, fontSize: 12 },
 });

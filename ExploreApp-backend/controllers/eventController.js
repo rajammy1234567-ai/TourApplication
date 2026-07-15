@@ -78,13 +78,8 @@ exports.getEvents = async (req, res) => {
   try {
     const { lat, lng } = req.query;
 
-    if (!lat || !lng) {
-      // return res.status(400).json([]);
-      return res.json(demoEvents);
-    }
-
-    if (!process.env.TICKETMASTER_API_KEY) {
-      // return res.json([]);
+    // Fast path: no GPS / no Ticketmaster key → instant demo list
+    if (!lat || !lng || !process.env.TICKETMASTER_API_KEY) {
       return res.json(demoEvents);
     }
 
@@ -94,8 +89,9 @@ exports.getEvents = async (req, res) => {
         latlong: `${lat},${lng}`,
         radius: 50,
         unit: "km",
+        size: 20,
       },
-      timeout: 10000,
+      timeout: 6000,
     });
 
     const events = response.data?._embedded?.events || [];

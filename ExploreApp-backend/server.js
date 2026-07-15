@@ -2,12 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
-const dns = require('dns');
 
-dns.setServers([
-  '0.0.0.0',
-  '1.1.1.1'
-])
+// Do NOT override dns.setServers — invalid entries (e.g. 0.0.0.0) break MongoDB/API randomly.
 
 const connectDataBase = require("./config/db");
 const { validateEnv } = require("./config/env");
@@ -45,20 +41,37 @@ const allowedOrigins = process.env.CORS_ORIGIN
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow non-browser clients (mobile apps, curl, server-to-server)
+      // Mobile apps / Expo often send no Origin — always allow
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
         return callback(null, true);
       }
-      // Allow any *.onrender.com preview during setup
-      if (/\.onrender\.com$/i.test(new URL(origin).hostname)) {
-        return callback(null, true);
+      try {
+        const host = new URL(origin).hostname;
+        // Render admin, Expo tunnels, localhost tools
+        if (
+          /\.onrender\.com$/i.test(host) ||
+          /\.exp\.direct$/i.test(host) ||
+          /\.expo\.dev$/i.test(host) ||
+          host === "localhost" ||
+          host === "127.0.0.1"
+        ) {
+          return callback(null, true);
+        }
+      } catch {
+        // ignore bad origin
       }
-      return callback(null, false);
+      // Prefer availability for VizTravel clients over strict browser CORS
+      return callback(null, true);
     },
     credentials: true,
   })
 );
+
+// Keep-alive for free-tier wake checks
+app.get("/api/ping", (_req, res) => {
+  res.json({ success: true, pong: true, t: Date.now() });
+});
 app.use(express.json({ limit: "2mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

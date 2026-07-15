@@ -4,6 +4,11 @@ import {
   ListingDetailView,
   type ListingDetail,
 } from "../components/listings/ListingDetailView";
+import {
+  ListingForm,
+  type ListingFormKind,
+  type VendorOption,
+} from "../components/listings/ListingForm";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Modal } from "../components/ui/Modal";
@@ -66,17 +71,34 @@ export function Listings() {
   const [tab, setTab] = useState<"tours" | "hotels">("tours");
   const [tours, setTours] = useState<Listing[]>([]);
   const [hotels, setHotels] = useState<Listing[]>([]);
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<ListingDetail | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formKind, setFormKind] = useState<ListingFormKind>("tour");
+  const [editing, setEditing] = useState<Listing | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const load = () => {
     setLoading(true);
-    Promise.all([apiFetch("/api/admin/tours"), apiFetch("/api/admin/hotels")])
-      .then(([t, h]) => {
+    Promise.all([
+      apiFetch("/api/admin/tours"),
+      apiFetch("/api/admin/hotels"),
+      apiFetch("/api/admin/vendors").catch(() => ({ vendors: [] })),
+    ])
+      .then(([t, h, v]) => {
         setTours(t.tours || []);
         setHotels(h.hotels || []);
+        setVendors(
+          (v.vendors || []).map((x: any) => ({
+            _id: x._id,
+            businessName: x.businessName,
+            ownerName: x.ownerName,
+            phone: x.phone,
+          }))
+        );
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -133,6 +155,68 @@ export function Listings() {
     setSelected(toDetail(item, tab === "tours" ? "tour" : "hotel"));
   };
 
+  const openCreate = () => {
+    setEditing(null);
+    setFormKind(tab === "tours" ? "tour" : "hotel");
+    setFormOpen(true);
+  };
+
+  const openEdit = (item: Listing, kind?: ListingFormKind) => {
+    setEditing(item);
+    setFormKind(kind || (tab === "tours" ? "tour" : "hotel"));
+    setFormOpen(true);
+    setSelected(null);
+  };
+
+  const handleDelete = async (type: "tour" | "hotel", id: string, title?: string) => {
+    if (
+      !confirm(
+        `Delete "${title || "this listing"}"? This cannot be undone. It will disappear from the user app.`
+      )
+    ) {
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await apiFetch(`/api/admin/${type === "tour" ? "tours" : "hotels"}/${id}`, {
+        method: "DELETE",
+      });
+      setSelected(null);
+      load();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSave = async (payload: Record<string, unknown>) => {
+    setSaving(true);
+    try {
+      if (editing?._id) {
+        await apiFetch(
+          `/api/admin/${formKind === "tour" ? "tours" : "hotels"}/${editing._id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          }
+        );
+      } else {
+        await apiFetch(`/api/admin/${formKind === "tour" ? "tours" : "hotels"}`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+      setFormOpen(false);
+      setEditing(null);
+      load();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const selectedStatus = (selected?.status || "pending").toLowerCase();
 
   return (
@@ -141,7 +225,7 @@ export function Listings() {
         page="listings"
         icon={<IconMap size={28} />}
         label="Tours & Stays Catalog"
-        hint="Full package details from partners — review before going live on VizTravel"
+        hint="Add, edit, approve or delete every package shown on VizTravel — full partner details included"
         pills={[
           { value: tours.length, label: "Tour Packages" },
           { value: hotels.length, label: "Hotels & Stays" },
@@ -157,7 +241,11 @@ export function Listings() {
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search package, destination, description, partner..."
-      />
+      >
+        <button type="button" className="btn btn-primary" onClick={openCreate}>
+          + Add {tab === "tours" ? "tour" : "stay"}
+        </button>
+      </PageToolbar>
 
       <div className="filter-row filter-row-travel">
         <button
@@ -184,7 +272,7 @@ export function Listings() {
             <IconClock size={18} />
           </span>
           <strong>{pendingCount}</strong>{" "}
-          {tab === "tours" ? "tour package(s)" : "hotel stay(s)"} waiting for your approval —
+          {tab === "tours" ? "tour package(s)" : "hotel stay(s)"} waiting for approval —
           open a row to review full details.
         </div>
       )}
@@ -199,13 +287,16 @@ export function Listings() {
             >
               {tab === "tours" ? "Tour Packages" : "Hotel & Stay Listings"}
             </IconPanelTitle>
+            <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
+              + New
+            </button>
           </div>
           <div className="panel-body table-wrap">
             {filtered.length === 0 ? (
               <EmptyState
                 icon={<IconInbox size={40} />}
                 title={`No ${tab === "tours" ? "tour packages" : "stays"} found`}
-                subtitle="When partners add listings on VizTravel, they'll appear here for your review."
+                subtitle="Create a listing yourself or wait for partners to submit packages."
               />
             ) : (
               <table>
@@ -247,11 +338,7 @@ export function Listings() {
                         <td>
                           <div className="row-user">
                             {item.image ? (
-                              <img
-                                src={item.image}
-                                alt=""
-                                className="row-thumb"
-                              />
+                              <img src={item.image} alt="" className="row-thumb" />
                             ) : (
                               <div className="row-avatar listing-avatar">
                                 {tab === "tours" ? (
@@ -268,15 +355,15 @@ export function Listings() {
                                   const photoCount =
                                     (item.image ? 1 : 0) + (item.gallery?.length || 0);
                                   return photoCount > 0
-                                    ? `${photoCount} photo${photoCount === 1 ? "" : "s"} · open full details`
-                                    : "No photos · open full details";
+                                    ? `${photoCount} photo${photoCount === 1 ? "" : "s"}`
+                                    : "No photos";
                                 })()}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td>
-                          <div className="cell-main">{vendor?.businessName || "—"}</div>
+                          <div className="cell-main">{vendor?.businessName || "Admin"}</div>
                           <div className="cell-sub">
                             {vendor?.phone || vendor?.ownerName || "—"}
                           </div>
@@ -303,6 +390,13 @@ export function Listings() {
                             >
                               View
                             </button>
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={() => openEdit(item)}
+                            >
+                              Edit
+                            </button>
                             {status !== "approved" && (
                               <button
                                 type="button"
@@ -318,21 +412,19 @@ export function Listings() {
                                 Approve
                               </button>
                             )}
-                            {status !== "rejected" && (
-                              <button
-                                type="button"
-                                className="btn btn-danger"
-                                onClick={() =>
-                                  updateStatus(
-                                    tab === "tours" ? "tour" : "hotel",
-                                    item._id,
-                                    "rejected"
-                                  )
-                                }
-                              >
-                                Reject
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              className="btn btn-danger"
+                              onClick={() =>
+                                handleDelete(
+                                  tab === "tours" ? "tour" : "hotel",
+                                  item._id,
+                                  item.title
+                                )
+                              }
+                            >
+                              Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -349,25 +441,35 @@ export function Listings() {
         <Modal
           xl
           title={selected.kind === "tour" ? "Tour package details" : "Stay listing details"}
-          description="Everything the partner submitted for this listing"
+          description="Complete information for this listing on VizTravel"
           onClose={() => setSelected(null)}
           actions={
             <>
+              <button type="button" className="btn" onClick={() => setSelected(null)}>
+                Close
+              </button>
               <button
                 type="button"
                 className="btn"
-                onClick={() => setSelected(null)}
+                disabled={actionLoading}
+                onClick={() => openEdit(selected as Listing, selected.kind)}
               >
-                Close
+                Edit
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={actionLoading}
+                onClick={() => handleDelete(selected.kind, selected._id, selected.title)}
+              >
+                Delete
               </button>
               {selectedStatus !== "rejected" && (
                 <button
                   type="button"
                   className="btn btn-danger"
                   disabled={actionLoading}
-                  onClick={() =>
-                    updateStatus(selected.kind, selected._id, "rejected")
-                  }
+                  onClick={() => updateStatus(selected.kind, selected._id, "rejected")}
                 >
                   Reject
                 </button>
@@ -377,17 +479,45 @@ export function Listings() {
                   type="button"
                   className="btn btn-success"
                   disabled={actionLoading}
-                  onClick={() =>
-                    updateStatus(selected.kind, selected._id, "approved")
-                  }
+                  onClick={() => updateStatus(selected.kind, selected._id, "approved")}
                 >
-                  Approve
+                  Approve & go live
                 </button>
               )}
             </>
           }
         >
           <ListingDetailView item={selected} />
+        </Modal>
+      )}
+
+      {formOpen && (
+        <Modal
+          xl
+          title={
+            editing
+              ? `Edit ${formKind === "tour" ? "tour" : "stay"}`
+              : `Add ${formKind === "tour" ? "tour package" : "hotel / stay"}`
+          }
+          description="Fields match what users see on VizTravel (title, photos, price, amenities, partner…)"
+          onClose={() => {
+            if (!saving) {
+              setFormOpen(false);
+              setEditing(null);
+            }
+          }}
+        >
+          <ListingForm
+            kind={formKind}
+            initial={editing}
+            vendors={vendors}
+            saving={saving}
+            onCancel={() => {
+              setFormOpen(false);
+              setEditing(null);
+            }}
+            onSubmit={handleSave}
+          />
         </Modal>
       )}
     </div>

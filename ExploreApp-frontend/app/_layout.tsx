@@ -2,12 +2,14 @@ import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { apiFetch } from "../constants/api";
+import { warmUpApi } from "../constants/api";
 
 export default function RootLayout() {
-  // Wake production API early (Render free tier cold starts)
+  // Wake Render free-tier API as soon as app opens
   useEffect(() => {
-    apiFetch("/health", { timeoutMs: 15000 }).catch(() => {});
+    warmUpApi();
+    const id = setInterval(() => warmUpApi(), 4 * 60 * 1000);
+    return () => clearInterval(id);
   }, []);
 
   return (

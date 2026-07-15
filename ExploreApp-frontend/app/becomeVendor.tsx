@@ -14,8 +14,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { AppScreen } from "../components/explore/AppScreen";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { apiUrl } from "../constants/api";
+import { apiFetch } from "../constants/api";
 import { ExploreColors, ExploreShadow, Layout } from "../constants/exploreTheme";
+import { CacheKeys, readCache, writeCache } from "../lib/listCache";
 
 type Application = {
   _id: string;
@@ -106,12 +107,16 @@ export default function BecomeVendorScreen() {
   const loadData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
-      else setLoading(true);
 
-      const storedToken = await AsyncStorage.getItem("token");
-      const userData = await AsyncStorage.getItem("userData");
+      const [storedToken, userData, cachedApp] = await Promise.all([
+        AsyncStorage.getItem("token"),
+        AsyncStorage.getItem("userData"),
+        readCache<Application | null>(CacheKeys.vendorApp),
+      ]);
 
       if (!storedToken) {
+        setLoading(false);
+        setRefreshing(false);
         Alert.alert("Login Required", "Please login first to become a vendor.", [
           { text: "Login", onPress: () => router.replace("/(auth)/login") },
           { text: "Cancel", onPress: () => router.back() },
@@ -121,23 +126,43 @@ export default function BecomeVendorScreen() {
 
       setToken(storedToken);
 
-      if (userData && !application) {
-        const user = JSON.parse(userData);
-        setOwnerName(user.fullname || user.name || "");
-        setPhone(user.phone || "");
-        setEmail(user.email || "");
+      // Instant paint from cache / user profile
+      if (cachedApp) {
+        setApplication(cachedApp);
+        setLoading(false);
       }
 
-      const response = await fetch(apiUrl("/api/vendor/application"), {
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          setOwnerName((prev) => prev || user.fullname || user.name || "");
+          setPhone((prev) => prev || user.phone || "");
+          setEmail((prev) => prev || user.email || "");
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!cachedApp && !isRefresh) {
+        // still show form skeleton quickly after token known
+        setLoading(false);
+      }
+
+      const response = await apiFetch("/api/vendor/application", {
         headers: { Authorization: `Bearer ${storedToken}` },
+        timeoutMs: 15000,
       });
       const data = await response.json();
       if (response.ok && data.success && data.application) {
         setApplication(data.application);
         setShowReapplyForm(false);
+        await writeCache(CacheKeys.vendorApp, data.application);
       } else {
         setApplication(null);
+        await writeCache(CacheKeys.vendorApp, null);
       }
+    } catch {
+      // keep cached application if any
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -156,7 +181,7 @@ export default function BecomeVendorScreen() {
 
     setSubmitting(true);
     try {
-      const response = await fetch(apiUrl("/api/vendor/apply"), {
+      const response = await apiFetch("/api/vendor/apply", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -174,6 +199,7 @@ export default function BecomeVendorScreen() {
           description: description.trim(),
           businessType,
         }),
+        timeoutMs: 20000,
       });
 
       const data = await response.json();
@@ -183,6 +209,7 @@ export default function BecomeVendorScreen() {
 
       setApplication(data.application);
       setShowReapplyForm(false);
+      await writeCache(CacheKeys.vendorApp, data.application);
       Alert.alert("Submitted", "Your application is now with the admin team for review.");
     } catch (err: any) {
       Alert.alert("Error", err.message || "Something went wrong");

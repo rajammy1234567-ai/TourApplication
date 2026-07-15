@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useFocusEffect } from "expo-router";
 import { apiJson, apiFetch } from "../../constants/api";
+import { CacheKeys, readCache, writeCache } from "../../lib/listCache";
 import {
   DEFAULT_HOTEL_IMAGE,
   DEFAULT_TOUR_IMAGE,
@@ -282,40 +283,57 @@ export default function HomeScreen() {
   const fetchTours = useCallback(async (q = "", opts?: { silent?: boolean }) => {
     setError("");
     const silent = Boolean(opts?.silent && hasToursRef.current);
+    // Hard cap so spinner never spins forever
+    let finished = false;
+    const safety = setTimeout(() => {
+      if (!finished) setLoadingTours(false);
+    }, 14000);
     try {
       if (!silent) setLoadingTours(true);
       const path = q ? `/api/tours?search=${encodeURIComponent(q)}` : "/api/tours";
-      const data = await apiJson<{ tours?: TourItem[] }>(path, { timeoutMs: 25000 });
+      const data = await apiJson<{ tours?: TourItem[] }>(path, {
+        timeoutMs: 15000,
+        retries: 1,
+      });
       const next = Array.isArray(data.tours) ? data.tours : [];
       hasToursRef.current = next.length > 0;
       setTours(next);
+      if (!q) writeCache(CacheKeys.tours, next);
     } catch (err: any) {
-      if (!silent) {
-        hasToursRef.current = false;
+      if (!silent && !hasToursRef.current) {
         setTours([]);
+        setError(err?.message || "Could not load tours");
       }
-      setError(err?.message || "Could not load tours");
     } finally {
+      finished = true;
+      clearTimeout(safety);
       setLoadingTours(false);
     }
   }, []);
 
   const fetchHotels = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = Boolean(opts?.silent && hasHotelsRef.current);
+    let finished = false;
+    const safety = setTimeout(() => {
+      if (!finished) setLoadingHotels(false);
+    }, 14000);
     try {
       if (!silent) setLoadingHotels(true);
       const data = await apiJson<{ hotels?: HotelItem[] }>("/api/hotels", {
-        timeoutMs: 25000,
+        timeoutMs: 15000,
+        retries: 1,
       });
       const next = Array.isArray(data.hotels) ? data.hotels : [];
       hasHotelsRef.current = next.length > 0;
       setHotels(next);
+      writeCache(CacheKeys.hotels("", "All"), next);
     } catch {
-      if (!silent) {
-        hasHotelsRef.current = false;
+      if (!silent && !hasHotelsRef.current) {
         setHotels([]);
       }
     } finally {
+      finished = true;
+      clearTimeout(safety);
       setLoadingHotels(false);
     }
   }, []);
@@ -337,24 +355,41 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadLocal();
+    // Instant paint from cache so Top-rated tours never stuck loading
+    (async () => {
+      const [cachedTours, cachedHotels] = await Promise.all([
+        readCache<TourItem[]>(CacheKeys.tours),
+        readCache<HotelItem[]>(CacheKeys.hotels("", "All")),
+      ]);
+      if (cachedTours?.length) {
+        setTours(cachedTours);
+        hasToursRef.current = true;
+        setLoadingTours(false);
+      }
+      if (cachedHotels?.length) {
+        setHotels(cachedHotels);
+        hasHotelsRef.current = true;
+        setLoadingHotels(false);
+      }
+    })();
   }, [loadLocal]);
 
   useFocusEffect(
     useCallback(() => {
       if (!fetched.current) {
         fetched.current = true;
-        fetchTours("");
-        fetchHotels();
+        fetchTours("", { silent: hasToursRef.current });
+        fetchHotels({ silent: hasHotelsRef.current });
       } else {
-        // Background refresh without full-screen loaders (feels faster)
         fetchHotels({ silent: true });
+        fetchTours(search.trim(), { silent: true });
       }
       (async () => {
         await loadLocal();
         const storedToken = await AsyncStorage.getItem(STORAGE_KEYS.token);
         fetchNotifications(storedToken);
       })();
-    }, [fetchTours, fetchHotels, loadLocal, fetchNotifications])
+    }, [fetchTours, fetchHotels, loadLocal, fetchNotifications, search])
   );
 
   useEffect(() => {
@@ -385,10 +420,21 @@ export default function HomeScreen() {
 
   const filteredTours = useMemo(() => {
     if (category === "All") return tours;
-    return tours.filter((t) => (t.category || "").toLowerCase().includes(category.toLowerCase()));
+    const c = category.toLowerCase();
+    return tours.filter((t) => {
+      const cat = (t.category || "").toLowerCase();
+      // Culture filter also matches backend "Cultural"
+      if (c === "culture") return cat.includes("cultur") || cat.includes("culture");
+      return cat.includes(c);
+    });
   }, [category, tours]);
 
-  const topTours = useMemo(() => filteredTours.slice(0, 8), [filteredTours]);
+  const topTours = useMemo(() => {
+    const sorted = [...filteredTours].sort(
+      (a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0)
+    );
+    return sorted.slice(0, 8);
+  }, [filteredTours]);
   const topHotels = useMemo(() => hotels.slice(0, 8), [hotels]);
   const wishlistPreview = useMemo(() => wishlist.slice(0, 6), [wishlist]);
 
@@ -541,9 +587,35 @@ export default function HomeScreen() {
             onAction={() => router.push("/(tabs)/tour")}
           />
           {loadingTours && tours.length === 0 ? (
-            <ActivityIndicator color={ExploreColors.primary} style={styles.loader} />
+            <View style={styles.loaderWrap}>
+              <ActivityIndicator color={ExploreColors.primary} />
+              <Text style={styles.loaderHint}>Loading tours…</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setLoadingTours(false);
+                  fetchTours("", { silent: false });
+                }}
+                style={styles.retryChip}
+              >
+                <Text style={styles.retryChipText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
           ) : topTours.length === 0 ? (
-            <Text style={styles.empty}>No tours found</Text>
+            <View style={styles.emptyBlock}>
+              <Text style={styles.empty}>{error || "No tours live yet"}</Text>
+              <Text style={styles.emptySub}>
+                Admin can add & approve tours from the admin panel
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setLoadingTours(true);
+                  fetchTours("", { silent: false });
+                }}
+                style={styles.retryChip}
+              >
+                <Text style={styles.retryChipText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {topTours.map((t, i) => {
@@ -931,12 +1003,39 @@ const styles = StyleSheet.create({
     marginTop: Layout.sectionGap,
   },
   loader: { height: Layout.listingImgH + 60, alignSelf: "center" },
+  loaderWrap: {
+    minHeight: Layout.listingImgH + 40,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 20,
+  },
+  loaderHint: { color: ExploreColors.textSecondary, fontSize: 13 },
+  retryChip: {
+    marginTop: 4,
+    backgroundColor: ExploreColors.primarySoft,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  retryChipText: { color: ExploreColors.primary, fontWeight: "800", fontSize: 13 },
+  emptyBlock: {
+    alignItems: "center",
+    paddingVertical: 24,
+    paddingHorizontal: Layout.pad,
+    gap: 6,
+  },
   empty: {
     color: ExploreColors.textSecondary,
     textAlign: "center",
-    paddingVertical: 32,
-    paddingHorizontal: Layout.pad,
     fontSize: 14,
+    fontWeight: "600",
+  },
+  emptySub: {
+    color: ExploreColors.textMuted,
+    textAlign: "center",
+    fontSize: 12,
+    marginBottom: 4,
   },
   inspireGrid: {
     flexDirection: "row",

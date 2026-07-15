@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { apiUrl } from "../constants/api";
+import { apiFetch } from "../constants/api";
 import { MOCK_BOOKINGS, MOCK_DASHBOARD } from "../constants/mockData";
 
 const isSkipMode = async () => {
@@ -18,15 +18,22 @@ const vendorFetch = async (path: string, options: RequestOptions = {}) => {
   }
 
   const token = await AsyncStorage.getItem("vendorToken");
-  const response = await fetch(apiUrl(path), {
+  const response = await apiFetch(path, {
     method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
     body: options.body ? JSON.stringify(options.body) : undefined,
+    timeoutMs: 55000,
   });
-  const data = await response.json();
+
+  let data: any = null;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(`Server error (HTTP ${response.status})`);
+  }
 
   if (response.status === 401) {
     await AsyncStorage.multiRemove(["vendorToken", "vendorData"]);
@@ -34,7 +41,7 @@ const vendorFetch = async (path: string, options: RequestOptions = {}) => {
   }
 
   if (!response.ok || !data.success) {
-    throw new Error(data.message || "Request failed");
+    throw new Error(data.message || data.msg || "Request failed");
   }
   return data;
 };

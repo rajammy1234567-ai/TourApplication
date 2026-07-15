@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { apiUrl } from "../../constants/api";
+import { apiFetch } from "../../constants/api";
 import { Colors, Radius, Shadow, Spacing } from "../../constants/theme";
 
 export default function VendorLogin() {
@@ -51,15 +51,16 @@ export default function VendorLogin() {
 
     setLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/vendor/login"), {
+      const response = await apiFetch("/api/vendor/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: phone.trim(), password }),
+        timeoutMs: 55000,
       });
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || "Login failed");
+        throw new Error(data.message || data.msg || "Login failed");
       }
 
       await AsyncStorage.multiSet([
