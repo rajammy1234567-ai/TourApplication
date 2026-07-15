@@ -89,36 +89,39 @@ const HOTEL_AMENITY_PRESETS = [
   "Airport Shuttle",
 ];
 
-const empty = (): ListingFormValues => ({
-  title: "",
-  description: "",
-  image: "",
-  galleryText: "",
-  amenitiesText: "",
-  status: "approved",
-  rating: "0",
-  vendorId: "",
-  packageId: "",
-  location: "",
-  duration: "",
-  people: "",
-  price: "",
-  category: "Other",
-  city: "",
-  state: "",
-  propertyType: "hotel",
-  pricePerNight: "",
-  bedrooms: "1",
-  bathrooms: "1",
-  maxGuests: "2",
-  checkInTime: "14:00",
-  checkOutTime: "11:00",
-  latitude: "",
-  longitude: "",
-});
+/** Default empty form values (tour + hotel fields combined). */
+function createEmptyFormValues(): ListingFormValues {
+  return {
+    title: "",
+    description: "",
+    image: "",
+    galleryText: "",
+    amenitiesText: "",
+    status: "approved",
+    rating: "0",
+    vendorId: "",
+    packageId: "",
+    location: "",
+    duration: "",
+    people: "",
+    price: "",
+    category: "Other",
+    city: "",
+    state: "",
+    propertyType: "hotel",
+    pricePerNight: "",
+    bedrooms: "1",
+    bathrooms: "1",
+    maxGuests: "2",
+    checkInTime: "14:00",
+    checkOutTime: "11:00",
+    latitude: "",
+    longitude: "",
+  };
+}
 
 function fromListing(item?: Record<string, any> | null): ListingFormValues {
-  const base = empty();
+  const base = createEmptyFormValues();
   if (!item) return base;
   const vendorId =
     typeof item.vendorId === "object" && item.vendorId
