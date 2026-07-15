@@ -89,7 +89,7 @@ const HOTEL_AMENITY_PRESETS = [
   "Airport Shuttle",
 ];
 
-const empty = (kind: ListingFormKind): ListingFormValues => ({
+const empty = (): ListingFormValues => ({
   title: "",
   description: "",
   image: "",
@@ -117,8 +117,8 @@ const empty = (kind: ListingFormKind): ListingFormValues => ({
   longitude: "",
 });
 
-function fromListing(kind: ListingFormKind, item?: Record<string, any> | null): ListingFormValues {
-  const base = empty(kind);
+function fromListing(item?: Record<string, any> | null): ListingFormValues {
+  const base = empty();
   if (!item) return base;
   const vendorId =
     typeof item.vendorId === "object" && item.vendorId
@@ -223,11 +223,11 @@ type Props = {
 };
 
 export function ListingForm({ kind, initial, vendors, saving, onSubmit, onCancel }: Props) {
-  const [values, setValues] = useState<ListingFormValues>(() => fromListing(kind, initial));
+  const [values, setValues] = useState<ListingFormValues>(() => fromListing(initial));
   const presets = kind === "tour" ? TOUR_AMENITY_PRESETS : HOTEL_AMENITY_PRESETS;
 
   useEffect(() => {
-    setValues(fromListing(kind, initial));
+    setValues(fromListing(initial));
   }, [kind, initial]);
 
   const selectedAmenities = useMemo(
