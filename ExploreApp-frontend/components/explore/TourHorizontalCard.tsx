@@ -21,6 +21,7 @@ export type TourItem = {
   rating?: number;
   image?: string;
   images?: string[];
+  gallery?: string[];
   duration?: string;
   people?: string;
   category?: string;
@@ -56,7 +57,7 @@ export function TourHorizontalCard({
   onToggleWishlist: (item: TourItem) => void;
   isFirst?: boolean;
 }) {
-  const imageUri = item.image || item.images?.[0] || DEFAULT_TOUR_IMAGE;
+  const imageUri = item.image || item.images?.[0] || item.gallery?.[0] || DEFAULT_TOUR_IMAGE;
   const title = item.title || item.name || "Tour";
 
   return (

@@ -32,7 +32,7 @@ function openTour(item: TourItem, imageUri: string, title: string) {
 }
 
 export function TourListCard({ item, variant = "row" }: { item: TourItem; variant?: "row" | "full" }) {
-  const imageUri = item.image || item.images?.[0] || DEFAULT_TOUR_IMAGE;
+  const imageUri = item.image || item.images?.[0] || item.gallery?.[0] || DEFAULT_TOUR_IMAGE;
   const title = item.title || item.name || "Tour";
 
   if (variant === "full") {

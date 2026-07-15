@@ -15,6 +15,7 @@ export type HotelItem = {
   _id: string;
   title: string;
   image?: string;
+  gallery?: string[];
   location?: string;
   city?: string;
   pricePerNight: number;
@@ -25,13 +26,25 @@ export type HotelItem = {
 };
 
 export function HotelCard({ item }: { item: HotelItem }) {
+  const cover = item.image || item.gallery?.[0];
+  const typeLabel = item.propertyType
+    ? item.propertyType.charAt(0).toUpperCase() + item.propertyType.slice(1)
+    : null;
+
   return (
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.9}
       onPress={() => router.push({ pathname: "/hotelDetails", params: { hotelId: item._id } })}
     >
-      <SafeImage uri={item.image} fallback={DEFAULT_HOTEL_IMAGE} style={styles.image} contentFit="cover" />
+      <View style={styles.imageWrap}>
+        <SafeImage uri={cover} fallback={DEFAULT_HOTEL_IMAGE} style={styles.image} contentFit="cover" />
+        {typeLabel ? (
+          <View style={styles.typeBadge}>
+            <Text style={styles.typeBadgeText}>{typeLabel}</Text>
+          </View>
+        ) : null}
+      </View>
       <View style={styles.body}>
         <View style={styles.top}>
           <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
@@ -61,7 +74,23 @@ const styles = StyleSheet.create({
     marginBottom: Layout.gap,
     ...ExploreShadow.card,
   },
+  imageWrap: { position: "relative" },
   image: { width: "100%", height: Layout.hotelImgH },
+  typeBadge: {
+    position: "absolute",
+    left: 10,
+    top: 10,
+    backgroundColor: "rgba(15, 23, 42, 0.72)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  typeBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "capitalize",
+  },
   body: { padding: Layout.pad },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   title: { flex: 1, fontSize: 16, fontWeight: "700", color: ExploreColors.text },

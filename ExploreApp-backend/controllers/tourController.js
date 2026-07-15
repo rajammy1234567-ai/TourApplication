@@ -3,7 +3,7 @@ const tourService = require("../services/tourService");
 
 exports.getTours = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20; // Default to 20
+  const limit = parseInt(req.query.limit) || 50;
   
   const tours = await tourService.getTours({ 
     search: req.query.search,

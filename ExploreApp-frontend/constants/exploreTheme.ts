@@ -67,5 +67,14 @@ export const DEFAULT_EVENT_IMAGE =
 export const isValidImageUrl = (url?: string | null): url is string =>
   Boolean(url?.trim().startsWith("http"));
 
-export const resolveImageUrl = (url: string | undefined | null, fallback: string) =>
-  isValidImageUrl(url) ? url.trim() : fallback;
+export const resolveImageUrl = (url: string | undefined | null, fallback: string) => {
+  if (!isValidImageUrl(url)) return fallback;
+  // Lazy import avoids circular dependency with constants/api.ts
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { normalizeMediaUrl } = require("./api") as typeof import("./api");
+    return normalizeMediaUrl(url.trim()) || fallback;
+  } catch {
+    return url.trim();
+  }
+};

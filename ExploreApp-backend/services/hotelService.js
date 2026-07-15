@@ -1,35 +1,76 @@
 const Hotel = require("../models/Hotel");
 const ApiError = require("../utils/ApiError");
 
-const getHotels = async ({ search, city, propertyType, page = 1, limit = 20 } = {}) => {
-  const filter = { status: "approved" };
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  if (search) {
-    filter.$text = { $search: String(search) };
-  }
-  if (city) {
-    filter.city = new RegExp(String(city), "i");
-  }
-  if (propertyType) {
-    filter.propertyType = propertyType;
+/** Live on user app: approved, or legacy rows created before status existed. */
+const publicVisibilityFilter = () => ({
+  $or: [
+    { status: "approved" },
+    { status: { $exists: false } },
+    { status: null },
+    { status: "" },
+  ],
+});
+
+const withCoverImage = (hotel) => {
+  if (!hotel) return hotel;
+  const gallery = Array.isArray(hotel.gallery) ? hotel.gallery.filter(Boolean) : [];
+  return {
+    ...hotel,
+    image: hotel.image || gallery[0] || undefined,
+    gallery,
+  };
+};
+
+const getHotels = async ({ search, city, propertyType, page = 1, limit = 50 } = {}) => {
+  const and = [publicVisibilityFilter()];
+
+  if (search && String(search).trim()) {
+    const re = new RegExp(escapeRegex(String(search).trim()), "i");
+    and.push({
+      $or: [
+        { title: re },
+        { location: re },
+        { city: re },
+        { state: re },
+        { description: re },
+        { propertyType: re },
+      ],
+    });
   }
 
-  const skip = (page - 1) * limit;
+  if (city && String(city).trim()) {
+    and.push({ city: new RegExp(escapeRegex(String(city).trim()), "i") });
+  }
 
-  return Hotel.find(filter)
+  if (propertyType && String(propertyType).trim() && propertyType !== "All") {
+    and.push({ propertyType: String(propertyType).trim().toLowerCase() });
+  }
+
+  const filter = and.length === 1 ? and[0] : { $and: and };
+  const skip = (Math.max(1, page) - 1) * limit;
+
+  const hotels = await Hotel.find(filter)
     .select("-__v")
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
     .lean();
+
+  return hotels.map(withCoverImage);
 };
 
 const getHotelById = async (hotelId) => {
-  const hotel = await Hotel.findOne({ _id: hotelId, status: "approved" }).lean();
+  const hotel = await Hotel.findOne({
+    $and: [{ _id: hotelId }, publicVisibilityFilter()],
+  }).lean();
+
   if (!hotel) {
     throw new ApiError(404, "Hotel not found");
   }
-  return hotel;
+  return withCoverImage(hotel);
 };
 
 const createHotel = async (vendorId, data) => {
@@ -89,4 +130,5 @@ module.exports = {
   deleteHotel,
   getVendorHotels,
   getVendorHotelById,
+  publicVisibilityFilter,
 };

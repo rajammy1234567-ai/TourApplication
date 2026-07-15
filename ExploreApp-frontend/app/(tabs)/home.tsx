@@ -17,7 +17,7 @@ import { useAppInsets } from "../../hooks/use-app-insets";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useFocusEffect } from "expo-router";
-import { apiUrl } from "../../constants/api";
+import { apiJson, apiFetch } from "../../constants/api";
 import {
   DEFAULT_HOTEL_IMAGE,
   DEFAULT_TOUR_IMAGE,
@@ -220,7 +220,7 @@ export default function HomeScreen() {
 
     try {
       setLoadingNotifications(true);
-      const res = await fetch(apiUrl("/api/users/notifications"), {
+      const res = await apiFetch("/api/users/notifications", {
         headers: { Authorization: `Bearer ${activeToken}` },
       });
       const data = await res.json();
@@ -243,7 +243,7 @@ export default function HomeScreen() {
       );
       setUnreadCount((c) => Math.max(0, c - 1));
       try {
-        await fetch(apiUrl(`/api/users/notifications/${id}/read`), {
+        await apiFetch(`/api/users/notifications/${id}/read`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -259,7 +259,7 @@ export default function HomeScreen() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
     try {
-      await fetch(apiUrl("/api/users/notifications/read-all"), {
+      await apiFetch("/api/users/notifications/read-all", {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -281,14 +281,12 @@ export default function HomeScreen() {
     setError("");
     try {
       setLoadingTours(true);
-      const url = q ? apiUrl(`/api/tours?search=${encodeURIComponent(q)}`) : apiUrl("/api/tours");
-      const res = await fetch(url);
-      const data = await res.json();
-      setTours(res.ok && data?.success ? data.tours || [] : []);
-      if (!res.ok || !data?.success) setError(data?.message || "Could not load tours");
-    } catch {
+      const path = q ? `/api/tours?search=${encodeURIComponent(q)}` : "/api/tours";
+      const data = await apiJson<{ tours?: TourItem[] }>(path);
+      setTours(Array.isArray(data.tours) ? data.tours : []);
+    } catch (err: any) {
       setTours([]);
-      setError("Could not load tours");
+      setError(err?.message || "Could not load tours");
     } finally {
       setLoadingTours(false);
     }
@@ -297,9 +295,8 @@ export default function HomeScreen() {
   const fetchHotels = useCallback(async () => {
     try {
       setLoadingHotels(true);
-      const res = await fetch(apiUrl("/api/hotels"));
-      const data = await res.json();
-      setHotels(res.ok && data?.success ? data.hotels || [] : []);
+      const data = await apiJson<{ hotels?: HotelItem[] }>("/api/hotels");
+      setHotels(Array.isArray(data.hotels) ? data.hotels : []);
     } catch {
       setHotels([]);
     } finally {
@@ -497,7 +494,7 @@ export default function HomeScreen() {
                 <ListingCard
                   key={h._id}
                   id={h._id}
-                  image={h.image || DEFAULT_HOTEL_IMAGE}
+                  image={h.image || h.gallery?.[0] || DEFAULT_HOTEL_IMAGE}
                   title={h.title}
                   subtitle={`${h.city || h.location || "India"} · ${h.propertyType || "Stay"}`}
                   price={h.pricePerNight}
@@ -527,7 +524,7 @@ export default function HomeScreen() {
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {topTours.map((t, i) => {
-                const imageUri = t.image || t.images?.[0] || DEFAULT_TOUR_IMAGE;
+                const imageUri = t.image || t.images?.[0] || t.gallery?.[0] || DEFAULT_TOUR_IMAGE;
                 const title = t.title || t.name || "Tour";
                 return (
                   <ListingCard
@@ -581,7 +578,7 @@ export default function HomeScreen() {
             />
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {wishlistPreview.map((t, i) => {
-                const imageUri = t.image || t.images?.[0] || DEFAULT_TOUR_IMAGE;
+                const imageUri = t.image || t.images?.[0] || t.gallery?.[0] || DEFAULT_TOUR_IMAGE;
                 const title = t.title || t.name || "Tour";
                 return (
                   <ListingCard
