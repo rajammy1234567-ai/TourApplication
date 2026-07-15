@@ -25,11 +25,40 @@ const { ensureDefaultAdmin } = require("./services/adminService");
 const { ensureDefaultVendor, seedDemoVendorData } = require("./services/vendorService");
 
 const app = express();
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
-  : true;
 
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+// Production frontends (admin static site + local dev). Mobile apps don't need CORS.
+const DEFAULT_CORS = [
+  "https://tourapplication-admin.onrender.com",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+];
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? [
+      ...new Set([
+        ...process.env.CORS_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean),
+        ...DEFAULT_CORS,
+      ]),
+    ]
+  : DEFAULT_CORS;
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser clients (mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+        return callback(null, true);
+      }
+      // Allow any *.onrender.com preview during setup
+      if (/\.onrender\.com$/i.test(new URL(origin).hostname)) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "2mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

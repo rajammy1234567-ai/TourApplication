@@ -30,7 +30,7 @@ services:
       - key: CLOUDINARY_FOLDER
         value: viztravel
       - key: CORS_ORIGIN
-        sync: false
+        value: https://tourapplication-admin.onrender.com
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET

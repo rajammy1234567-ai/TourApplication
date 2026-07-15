@@ -3,9 +3,13 @@ import Constants from "expo-constants";
 
 const PORT = process.env.EXPO_PUBLIC_API_PORT || "5000";
 
-const isLocalUrl = (url: string) => /localhost|127\.0\.0\.1/i.test(url);
+/** Production API (Render) */
+export const PROD_API_BASE_URL = "https://tourapplication-api.onrender.com";
 
-/** LAN IP from Expo Metro — always matches the network your phone is on. */
+const isLocalUrl = (url: string) => /localhost|127\.0\.0\.1/i.test(url);
+const isLocalHost = (host: string) => /localhost|127\.0\.0\.1/i.test(host);
+const stripSlash = (url: string) => url.replace(/\/$/, "");
+
 const getExpoDevHost = (): string | null => {
   const raw =
     Constants.expoConfig?.hostUri ??
@@ -22,36 +26,41 @@ const getExpoDevHost = (): string | null => {
   return cleaned;
 };
 
-const resolveDevHost = () => {
-  const expoHost = getExpoDevHost();
-  if (expoHost) return expoHost;
-
-  const envHost = process.env.EXPO_PUBLIC_DEV_HOST?.trim();
-  if (envHost) return envHost;
-
-  if (Platform.OS === "android") {
-    return Constants.isDevice ? "10.0.2.2" : "10.0.2.2";
-  }
-
-  if (!Constants.isDevice) return "localhost";
-  return "localhost";
+const getConfiguredProdUrl = (): string | null => {
+  const fromExtra = (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)
+    ?.apiBaseUrl;
+  const fromEnv = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  const candidate = stripSlash(fromEnv || fromExtra || PROD_API_BASE_URL);
+  if (!candidate || isLocalUrl(candidate)) return null;
+  return candidate;
 };
 
 const resolveBaseUrl = () => {
-  const expoHost = getExpoDevHost();
+  const forceProd =
+    process.env.EXPO_PUBLIC_FORCE_PROD_API === "1" ||
+    process.env.EXPO_PUBLIC_FORCE_PROD_API === "true";
 
-  // Physical device on Expo Go: Metro host is the most reliable (same WiFi, current IP).
+  const prodUrl = getConfiguredProdUrl();
+
+  if (!__DEV__ || forceProd) {
+    return prodUrl || PROD_API_BASE_URL;
+  }
+
+  const expoHost = getExpoDevHost();
   if (expoHost) {
     return `http://${expoHost}:${PORT}`;
   }
 
-  const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
-  if (envUrl && !isLocalUrl(envUrl)) {
-    return envUrl;
+  if (prodUrl) return prodUrl;
+
+  const envHost = process.env.EXPO_PUBLIC_DEV_HOST?.trim();
+  if (envHost) return `http://${envHost}:${PORT}`;
+
+  if (Platform.OS === "android") {
+    return `http://10.0.2.2:${PORT}`;
   }
 
-  const host = resolveDevHost();
-  return `http://${host}:${PORT}`;
+  return `http://localhost:${PORT}`;
 };
 
 export const API_BASE_URL = resolveBaseUrl();
@@ -63,15 +72,24 @@ if (__DEV__) {
 export const apiUrl = (path: string) =>
   `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
-/** Ensure uploaded image URLs use the same host the app talks to (not stale localhost). */
+/** Keep Cloudinary/CDN URLs intact; only rewrite local backend uploads. */
 export const normalizeMediaUrl = (url: string) => {
   if (!url) return url;
   try {
     const media = new URL(url);
     const base = new URL(API_BASE_URL);
-    media.protocol = base.protocol;
-    media.host = base.host;
-    return media.toString();
+    const localish =
+      isLocalHost(media.hostname) ||
+      /^192\.168\./.test(media.hostname) ||
+      /^10\./.test(media.hostname) ||
+      media.port === "5000";
+
+    if (localish) {
+      media.protocol = base.protocol;
+      media.host = base.host;
+      return media.toString();
+    }
+    return url;
   } catch {
     return url;
   }
