@@ -3,7 +3,7 @@ pid: 11164
 cwd: "D:\Programming\Explore"
 command: "cd \"D:\\Programming\\Explore\\ExploreApp-backend\"; npm run dev"
 started_at: 2026-07-06T09:59:21.999Z
-running_for_ms: 8114990  
+running_for_ms: 10274999 
 ---
 
 > exploreapp-backend@1.0.0 dev

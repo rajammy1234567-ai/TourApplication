@@ -3,7 +3,7 @@ pid: 17560
 cwd: "D:\Programming\Explore"
 command: "cd \"D:\\Programming\\Explore\\ExploreApp-admin\"; if (-not (Test-Path node_modules)) { npm install }; npm run dev"
 started_at: 2026-07-06T10:12:31.866Z
-running_for_ms: 6430000  
+running_for_ms: 9495007  
 ---
 
 > exploreapp-admin@0.0.0 dev

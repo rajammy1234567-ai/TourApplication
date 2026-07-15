@@ -105,9 +105,9 @@ export default function HotelDetailsScreen() {
 
         {images.length > 1 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>
-            {images.slice(1, 5).map((uri) => (
+            {images.slice(1).map((uri, idx) => (
               <SafeImage
-                key={uri}
+                key={`${uri}-${idx}`}
                 uri={uri}
                 fallback={DEFAULT_HOTEL_IMAGE}
                 style={styles.galleryImg}

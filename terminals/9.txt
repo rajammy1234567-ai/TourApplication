@@ -3,7 +3,7 @@ pid: 17460
 cwd: "D:\Programming\Explore"
 command: "cd \"D:\\Programming\\Explore\\ExploreApp-admin\"; npm run dev"
 started_at: 2026-07-06T10:13:14.270Z
-running_for_ms: 6385006  
+running_for_ms: 9455017  
 ---
 
 > exploreapp-admin@0.0.0 dev

@@ -52,6 +52,7 @@ export function ImageGalleryEditor({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: forCover,
+      allowsMultipleSelection: !forCover,
       aspect: forCover ? [16, 9] : undefined,
       quality: 0.85,
     });
@@ -60,15 +61,23 @@ export function ImageGalleryEditor({
 
     setUploading(true);
     try {
-      const asset = result.assets[0];
-      const url = await uploadImage(asset.uri, asset.mimeType);
       if (forCover) {
+        const asset = result.assets[0];
+        const url = await uploadImage(asset.uri, asset.mimeType);
         onCoverChange(url);
       } else {
-        onGalleryChange([...gallery, url]);
+        const remainingSlots = MAX_GALLERY_IMAGES - gallery.length;
+        const assetsToUpload = result.assets.slice(0, remainingSlots);
+        
+        const uploadedUrls = [];
+        for (const asset of assetsToUpload) {
+          const url = await uploadImage(asset.uri, asset.mimeType);
+          uploadedUrls.push(url);
+        }
+        onGalleryChange([...gallery, ...uploadedUrls]);
       }
     } catch (err: any) {
-      Alert.alert("Upload failed", err.message || "Could not upload image");
+      Alert.alert("Upload failed", err.message || "Could not upload image(s)");
     } finally {
       setUploading(false);
     }

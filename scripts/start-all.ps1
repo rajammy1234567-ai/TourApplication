@@ -17,10 +17,10 @@ Start-Sleep -Seconds 3
 Start-ExploreWindow "Admin (5173)" "cd ExploreApp-admin; npm run dev"
 Start-Sleep -Seconds 2
 
-Start-ExploreWindow "User App (Expo)" "cd ExploreApp-frontend; npm start"
+Start-ExploreWindow "User App (Expo)" "cd ExploreApp-frontend; npx expo start --port 8081"
 Start-Sleep -Seconds 1
 
-Start-ExploreWindow "Vendor App (Expo)" "cd ExploreApp-vendor; npm start"
+Start-ExploreWindow "Vendor App (Expo)" "cd ExploreApp-vendor; npx expo start --port 8082"
 
 Write-Host ""
 Write-Host "Services:" -ForegroundColor Green
