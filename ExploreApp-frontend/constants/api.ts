@@ -22,22 +22,28 @@ const getExpoDevHost = (): string | null => {
 };
 
 const resolveDevHost = () => {
-  if (process.env.EXPO_PUBLIC_DEV_HOST) {
-    return process.env.EXPO_PUBLIC_DEV_HOST;
-  }
-
+  // Prefer Metro/Expo host so phone always hits the PC on the current Wi‑Fi.
   const expoHost = getExpoDevHost();
   if (expoHost) return expoHost;
 
+  const envHost = process.env.EXPO_PUBLIC_DEV_HOST?.trim();
+  if (envHost) return envHost;
+
   if (Platform.OS === "android") {
-    return Constants.isDevice ? getExpoDevHost() || "10.0.2.2" : "10.0.2.2";
+    return "10.0.2.2";
   }
 
-  if (!Constants.isDevice) return "localhost";
   return "localhost";
 };
 
 const resolveBaseUrl = () => {
+  const expoHost = getExpoDevHost();
+
+  // Physical device / Expo Go: Metro host is most reliable for local backend.
+  if (expoHost) {
+    return `http://${expoHost}:${PORT}`;
+  }
+
   const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
   if (envUrl && !isLocalUrl(envUrl)) return envUrl;
 

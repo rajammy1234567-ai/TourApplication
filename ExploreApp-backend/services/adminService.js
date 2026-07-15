@@ -487,14 +487,14 @@ const getAllBookings = async () => {
 
 const getAllTours = async () => {
   return Tour.find()
-    .populate("vendorId", "businessName ownerName phone")
+    .populate("vendorId", "businessName ownerName phone email")
     .sort({ createdAt: -1 })
     .lean();
 };
 
 const getAllHotels = async () => {
   return Hotel.find()
-    .populate("vendorId", "businessName ownerName phone")
+    .populate("vendorId", "businessName ownerName phone email")
     .sort({ createdAt: -1 })
     .lean();
 };

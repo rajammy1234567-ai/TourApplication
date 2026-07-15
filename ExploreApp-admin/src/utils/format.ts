@@ -1,4 +1,7 @@
-export const formatINR = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+export const formatINR = (n?: number | null) => {
+  const value = typeof n === "number" && Number.isFinite(n) ? n : 0;
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
+};
 
 export const formatDate = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";

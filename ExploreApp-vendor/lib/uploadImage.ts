@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { File, UploadType } from "expo-file-system";
 import { apiUrl, normalizeMediaUrl } from "../constants/api";
 
 const guessMimeType = (uri: string, mimeType?: string | null) => {
@@ -31,6 +32,17 @@ const buildFileName = (uri: string) => {
   return `${decoded.replace(/[^a-zA-Z0-9_-]/g, "") || "photo"}.jpg`;
 };
 
+type UploadJson = {
+  success?: boolean;
+  message?: string;
+  url?: string;
+};
+
+/**
+ * Expo's global fetch rejects RN-style FormData `{ uri, name, type }`
+ * with "Unsupported FormDataPart implementation". Use expo-file-system
+ * native multipart upload instead.
+ */
 export const uploadImage = async (
   uri: string,
   mimeType?: string | null
@@ -40,43 +52,53 @@ export const uploadImage = async (
     throw new Error("Please login to upload photos");
   }
 
-  const filename = buildFileName(uri);
   const type = guessMimeType(uri, mimeType);
   const uploadEndpoint = apiUrl("/api/vendor/upload");
+  const file = new File(uri);
 
-  const formData = new FormData();
-  formData.append("image", {
-    uri,
-    name: filename,
-    type,
-  } as unknown as Blob);
+  if (!file.exists) {
+    throw new Error("Selected image file not found on device");
+  }
 
-  let response: Response;
+  let status = 0;
+  let body = "";
+
   try {
-    response = await fetch(uploadEndpoint, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
+    const result = await file.upload(uploadEndpoint, {
+      httpMethod: "POST",
+      uploadType: UploadType.MULTIPART,
+      fieldName: "image",
+      mimeType: type,
+      parameters: {
+        // Helps some servers derive filename; RN FormData used to send name=
+        name: buildFileName(uri),
+      },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
-  } catch {
+    status = result.status;
+    body = result.body;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `Server tak pahunch nahi paaya (${uploadEndpoint}). Backend chal raha hai? Same WiFi?`
+      `Server tak pahunch nahi paaya (${uploadEndpoint}). Backend chal raha hai? Same WiFi?\n\nDetail: ${detail}`
     );
   }
 
-  let data: { success?: boolean; message?: string; url?: string } = {};
+  let data: UploadJson = {};
   try {
-    data = await response.json();
+    data = body ? (JSON.parse(body) as UploadJson) : {};
   } catch {
     throw new Error(
-      response.status === 404
+      status === 404
         ? "Upload API nahi mili — backend restart karo."
-        : `Upload fail (HTTP ${response.status})`
+        : `Upload fail (HTTP ${status})`
     );
   }
 
-  if (!response.ok || !data.success || !data.url) {
-    throw new Error(data.message || `Upload fail (HTTP ${response.status})`);
+  if (status < 200 || status >= 300 || !data.success || !data.url) {
+    throw new Error(data.message || `Upload fail (HTTP ${status})`);
   }
 
   return normalizeMediaUrl(data.url);
