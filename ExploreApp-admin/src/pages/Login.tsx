@@ -26,24 +26,38 @@ export function Login({ onSuccess }: { onSuccess: (token: string, admin: object)
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(apiUrl("/api/admin/login"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password: password.trim(),
-        }),
-      });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      let res: Response;
+      try {
+        res = await fetch(apiUrl("/api/admin/login"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            password: password.trim(),
+          }),
+          signal: controller.signal,
+        });
+      } catch (netErr: any) {
+        if (netErr?.name === "AbortError") {
+          throw new Error(
+            "API is waking up (can take ~1 min on free plan). Wait a few seconds and login again."
+          );
+        }
+        throw new Error(
+          "Cannot reach live API. Open https://tourapplication-api.onrender.com/health then retry."
+        );
+      } finally {
+        clearTimeout(timer);
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
-        if (res.status === 0 || !res.status) {
-          throw new Error("Backend not reachable. Start VizTravel backend on port 5000.");
-        }
         throw new Error(data.message || `Login failed (${res.status})`);
       }
       onSuccess(data.token, data.admin);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
