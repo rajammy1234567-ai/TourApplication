@@ -11,6 +11,7 @@ export default ({ config }) => {
     ...config,
     name: "VizTravel",
     slug: "viztravel",
+    owner: "apk_build_green",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icons/vizTravelicon.png",
@@ -26,7 +27,6 @@ export default ({ config }) => {
     },
     android: {
       package: "com.viztravel.app",
-      versionCode: 1,
       permissions: ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
       adaptiveIcon: {
         foregroundImage: "./assets/icons/vizTravelicon.png",
@@ -65,7 +65,7 @@ export default ({ config }) => {
       router: {},
       apiBaseUrl,
       eas: {
-        projectId: "7a2b2ed4-c594-49de-a708-157976305ef2",
+        projectId: "bf51b900-9c2e-4059-a752-6070f3786cab",
       },
     },
   };

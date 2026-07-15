@@ -72,7 +72,9 @@ const getTours = async ({ search, page = 1, limit = 50 } = {}) => {
 const getTourById = async (tourId) => {
   const tour = await Tour.findOne({
     $and: [getTourFilter(tourId), publicVisibilityFilter()],
-  }).lean();
+  })
+    .populate("vendorId", "businessName ownerName phone email city state address businessType")
+    .lean();
 
   if (!tour) {
     throw new ApiError(404, "Tour package not found");

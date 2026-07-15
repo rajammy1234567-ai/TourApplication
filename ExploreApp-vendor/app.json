@@ -2,6 +2,7 @@
   "expo": {
     "name": "VizTravel Vendor",
     "slug": "viztravel-vendor",
+    "owner": "apk_build_green",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,13 +12,13 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.viztravel.vendor",
       "adaptiveIcon": {
         "backgroundColor": "#003D82",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "usesCleartextTraffic": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -31,6 +32,11 @@
           "photosPermission": "Allow VizTravel Vendor to access your photos for listing images."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ceab8e5b-1ee3-4f64-8cc2-2b5816e58a1e"
+      }
+    }
   }
 }

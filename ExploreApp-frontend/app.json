@@ -2,6 +2,7 @@
   "expo": {
     "name": "VizTravel",
     "slug": "viztravel",
+    "owner": "apk_build_green",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icons/vizTravelicon.png",
@@ -24,8 +25,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "usesCleartextTraffic": true,
-      "package": "com.viztravel.app",
-      "versionCode": 1
+      "package": "com.viztravel.app"
     },
     "web": {
       "output": "static",
@@ -58,7 +58,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "7a2b2ed4-c594-49de-a708-157976305ef2"
+        "projectId": "bf51b900-9c2e-4059-a752-6070f3786cab"
       }
     }
   }

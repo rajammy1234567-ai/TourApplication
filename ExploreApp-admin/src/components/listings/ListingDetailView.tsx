@@ -7,6 +7,10 @@ export type VendorRef = {
   ownerName?: string;
   phone?: string;
   email?: string;
+  city?: string;
+  state?: string;
+  address?: string;
+  businessType?: string;
 };
 
 export type ListingDetail = {
@@ -199,6 +203,10 @@ export function ListingDetailView({ item }: { item: ListingDetail }) {
           <Field label="Owner" value={vendor?.ownerName} />
           <Field label="Phone" value={vendor?.phone} />
           <Field label="Email" value={vendor?.email} />
+          <Field label="City" value={vendor?.city} />
+          <Field label="State" value={vendor?.state} />
+          <Field label="Address" value={vendor?.address} full />
+          <Field label="Business type" value={vendor?.businessType} />
         </div>
       </div>
 

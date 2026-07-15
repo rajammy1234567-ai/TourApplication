@@ -21,7 +21,7 @@ import {
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { apiUrl } from "../../constants/api";
+import { apiFetch, getApiBaseUrl } from "../../constants/api";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -130,16 +130,7 @@ export default function LoginScreen() {
     finishGoogleLogin();
   }, [googleResponse]);
 
-  const ensureApiBaseUrl = () => {
-    if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
-      Alert.alert(
-        "Missing API URL",
-        "Set EXPO_PUBLIC_API_BASE_URL in your env (example: http://192.168.1.8:5000)."
-      );
-      return false;
-    }
-    return true;
-  };
+  const normalizePhone = (value: string) => value.replace(/[\s\-()]/g, "").trim();
 
   const normalizeAuthResponse = (data: AuthResponse) => {
     const token = data?.token || data?.data?.token || "";
@@ -178,17 +169,21 @@ export default function LoginScreen() {
   };
 
   const completeSocialLogin = async (profile: Record<string, any>) => {
-    if (!ensureApiBaseUrl()) return;
-
-    const res = await fetch(apiUrl("/api/auth/social-login"), {
+    const res = await apiFetch("/api/auth/social-login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(profile),
+      timeoutMs: 30000,
     });
 
-    const data = (await res.json()) as AuthResponse;
+    let data: AuthResponse = {};
+    try {
+      data = (await res.json()) as AuthResponse;
+    } catch {
+      throw new Error(`Server error (HTTP ${res.status})`);
+    }
 
     if (!res.ok) {
       throw new Error(data?.msg || data?.message || "Social login failed.");
@@ -203,8 +198,6 @@ export default function LoginScreen() {
       return;
     }
 
-    if (!ensureApiBaseUrl()) return;
-
     setLoading(true);
 
     try {
@@ -212,18 +205,24 @@ export default function LoginScreen() {
         password,
         ...(loginType === "email"
           ? { email: emailOrPhone.trim().toLowerCase() }
-          : { phone: emailOrPhone.trim() }),
+          : { phone: normalizePhone(emailOrPhone) }),
       };
 
-      const res = await fetch(apiUrl("/api/auth/login"), {
+      const res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
+        timeoutMs: 30000,
       });
 
-      const data = (await res.json()) as AuthResponse;
+      let data: AuthResponse = {};
+      try {
+        data = (await res.json()) as AuthResponse;
+      } catch {
+        throw new Error(`Server error (HTTP ${res.status})`);
+      }
 
       if (!res.ok) {
         Alert.alert("Login Failed", data?.msg || data?.message || "Login failed.");
@@ -231,10 +230,11 @@ export default function LoginScreen() {
       }
 
       await persistSession(data);
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert(
-        "Network error",
-        "Could not reach the server. For Expo Go on a real phone, set EXPO_PUBLIC_API_BASE_URL to your computer IP address."
+        "Could not sign in",
+        error?.message ||
+          `Cannot reach server (${getApiBaseUrl()}). Check internet and try again.`
       );
     } finally {
       setLoading(false);

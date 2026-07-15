@@ -65,7 +65,9 @@ const getHotels = async ({ search, city, propertyType, page = 1, limit = 50 } = 
 const getHotelById = async (hotelId) => {
   const hotel = await Hotel.findOne({
     $and: [{ _id: hotelId }, publicVisibilityFilter()],
-  }).lean();
+  })
+    .populate("vendorId", "businessName ownerName phone email city state address businessType")
+    .lean();
 
   if (!hotel) {
     throw new ApiError(404, "Hotel not found");

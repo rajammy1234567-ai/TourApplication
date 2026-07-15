@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { AppScreen } from "../components/explore/AppScreen";
 import { useAppInsets } from "../hooks/use-app-insets";
-import { apiUrl } from "../constants/api";
+import { apiJson } from "../constants/api";
 import { SafeImage } from "../components/explore/SafeImage";
 import {
   DEFAULT_HOTEL_IMAGE,
@@ -19,6 +19,16 @@ import {
   Layout,
   formatINR,
 } from "../constants/exploreTheme";
+
+type VendorInfo = {
+  businessName?: string;
+  ownerName?: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  state?: string;
+  address?: string;
+};
 
 type Hotel = {
   _id: string;
@@ -38,6 +48,7 @@ type Hotel = {
   amenities?: string[];
   checkInTime?: string;
   checkOutTime?: string;
+  vendorId?: string | VendorInfo | null;
 };
 
 export default function HotelDetailsScreen() {
@@ -45,21 +56,35 @@ export default function HotelDetailsScreen() {
   const { hotelId } = useLocalSearchParams<{ hotelId: string }>();
   const [hotel, setHotel] = useState<Hotel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchHotel = async () => {
+    if (!hotelId) {
+      setLoading(false);
+      setError("Missing hotel id");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError("");
       try {
-        const response = await fetch(apiUrl(`/api/hotels/${hotelId}`));
-        const data = await response.json();
-        if (response.ok && data.success) {
-          setHotel(data.hotel);
+        const data = await apiJson<{ hotel?: Hotel }>(`/api/hotels/${hotelId}`, {
+          timeoutMs: 25000,
+        });
+        if (!cancelled) setHotel(data.hotel || null);
+      } catch (err: any) {
+        if (!cancelled) {
+          setHotel(null);
+          setError(err?.message || "Could not load hotel");
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-
-    if (hotelId) fetchHotel();
   }, [hotelId]);
 
   if (loading) {
@@ -67,6 +92,7 @@ export default function HotelDetailsScreen() {
       <AppScreen variant="stack" style={styles.safe}>
         <View style={styles.loader}>
           <ActivityIndicator size="large" color={ExploreColors.primary} />
+          <Text style={styles.muted}>Loading stay…</Text>
         </View>
       </AppScreen>
     );
@@ -76,42 +102,59 @@ export default function HotelDetailsScreen() {
     return (
       <AppScreen variant="stack" style={styles.safe}>
         <View style={styles.loader}>
-          <Text style={styles.muted}>Hotel not found</Text>
+          <Text style={styles.muted}>{error || "Hotel not found"}</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
+            <Text style={styles.backLinkText}>Go back</Text>
+          </TouchableOpacity>
         </View>
       </AppScreen>
     );
   }
 
   const images = [hotel.image, ...(hotel.gallery || [])].filter(Boolean) as string[];
+  const uniqueImages = images.filter((u, i, arr) => arr.indexOf(u) === i);
   const footerH = 72 + footerBottomPad;
+  const vendor =
+    hotel.vendorId && typeof hotel.vendorId === "object" ? hotel.vendorId : null;
+  const amenities = (hotel.amenities || []).filter(Boolean);
 
   return (
     <AppScreen variant="hero" style={styles.safe}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: footerH + 16 }}
+        removeClippedSubviews
       >
         <View style={styles.hero}>
           <SafeImage
-            uri={images[0]}
+            uri={uniqueImages[0]}
             fallback={DEFAULT_HOTEL_IMAGE}
             style={styles.heroImage}
             contentFit="cover"
+            transition={150}
           />
-          <TouchableOpacity style={[styles.backBtn, { top: overlayTop }]} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={[styles.backBtn, { top: overlayTop }]}
+            onPress={() => router.back()}
+          >
             <Ionicons name="arrow-back" size={22} color={ExploreColors.text} />
           </TouchableOpacity>
         </View>
 
-        {images.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>
-            {images.slice(1).map((uri, idx) => (
+        {uniqueImages.length > 1 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.gallery}
+          >
+            {uniqueImages.slice(1).map((uri, idx) => (
               <SafeImage
                 key={`${uri}-${idx}`}
                 uri={uri}
                 fallback={DEFAULT_HOTEL_IMAGE}
                 style={styles.galleryImg}
                 contentFit="cover"
+                transition={100}
               />
             ))}
           </ScrollView>
@@ -123,6 +166,25 @@ export default function HotelDetailsScreen() {
             <Ionicons name="location-outline" size={14} color={ExploreColors.textSecondary} />{" "}
             {[hotel.city, hotel.state, hotel.location].filter(Boolean).join(", ")}
           </Text>
+
+          <View style={styles.metaRow}>
+            {hotel.propertyType ? (
+              <View style={styles.metaChip}>
+                <Text style={styles.metaChipText}>
+                  {hotel.propertyType.charAt(0).toUpperCase() + hotel.propertyType.slice(1)}
+                </Text>
+              </View>
+            ) : null}
+            {hotel.rating != null && hotel.rating > 0 ? (
+              <View style={styles.metaChip}>
+                <Text style={styles.metaChipText}>⭐ {hotel.rating.toFixed(1)}</Text>
+              </View>
+            ) : (
+              <View style={styles.metaChip}>
+                <Text style={styles.metaChipText}>New stay</Text>
+              </View>
+            )}
+          </View>
 
           <View style={styles.statsRow}>
             <View style={styles.stat}>
@@ -141,26 +203,58 @@ export default function HotelDetailsScreen() {
 
           <Text style={styles.sectionTitle}>About this place</Text>
           <Text style={styles.description}>
-            {hotel.description || "A comfortable stay with great amenities, perfect for your next trip."}
+            {hotel.description?.trim() ||
+              "A comfortable stay with great amenities, perfect for your next trip."}
           </Text>
 
-          {hotel.amenities?.length ? (
-            <>
-              <Text style={styles.sectionTitle}>Amenities</Text>
-              <View style={styles.amenities}>
-                {hotel.amenities.map((item) => (
-                  <View key={item} style={styles.amenityChip}>
-                    <Text style={styles.amenityText}>{item}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          ) : null}
+          <Text style={styles.sectionTitle}>
+            Amenities{amenities.length ? ` (${amenities.length})` : ""}
+          </Text>
+          {amenities.length ? (
+            <View style={styles.amenities}>
+              {amenities.map((item) => (
+                <View key={item} style={styles.amenityChip}>
+                  <Ionicons name="checkmark" size={12} color={ExploreColors.primary} />
+                  <Text style={styles.amenityText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.description}>No amenities listed by the partner yet.</Text>
+          )}
 
           <Text style={styles.sectionTitle}>Check-in / Check-out</Text>
           <Text style={styles.description}>
             Check-in: {hotel.checkInTime || "14:00"} · Check-out: {hotel.checkOutTime || "11:00"}
           </Text>
+
+          {vendor ? (
+            <>
+              <Text style={styles.sectionTitle}>Hosted by</Text>
+              <View style={styles.vendorCard}>
+                <View style={styles.vendorIcon}>
+                  <Ionicons name="storefront-outline" size={22} color={ExploreColors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.vendorName}>{vendor.businessName || "Partner"}</Text>
+                  {vendor.ownerName ? (
+                    <Text style={styles.vendorMeta}>{vendor.ownerName}</Text>
+                  ) : null}
+                  {[vendor.city, vendor.state].filter(Boolean).length ? (
+                    <Text style={styles.vendorMeta}>
+                      {[vendor.city, vendor.state].filter(Boolean).join(", ")}
+                    </Text>
+                  ) : null}
+                  {vendor.phone ? (
+                    <Text style={styles.vendorContact}>📞 {vendor.phone}</Text>
+                  ) : null}
+                  {vendor.email ? (
+                    <Text style={styles.vendorContact}>✉️ {vendor.email}</Text>
+                  ) : null}
+                </View>
+              </View>
+            </>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -195,65 +289,128 @@ export default function HotelDetailsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: ExploreColors.surface },
-  loader: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: ExploreColors.background },
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: ExploreColors.background,
+  },
   muted: { color: ExploreColors.textSecondary },
+  backLink: { marginTop: 12 },
+  backLinkText: { color: ExploreColors.primary, fontWeight: "700" },
   hero: { height: 280 },
   heroImage: { width: "100%", height: "100%" },
   backBtn: {
     position: "absolute",
     left: 16,
-    backgroundColor: ExploreColors.surface,
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: "center",
+    backgroundColor: "#fff",
     alignItems: "center",
+    justifyContent: "center",
   },
-  gallery: { paddingHorizontal: Layout.pad, paddingTop: Layout.gap, gap: Layout.gap },
-  galleryImg: { width: 120, height: 80, borderRadius: Layout.radiusSm },
-  content: { padding: Layout.pad },
-  title: { fontSize: 24, fontWeight: "800", color: ExploreColors.text },
-  location: { color: ExploreColors.textSecondary, marginTop: 6, fontSize: 14 },
-  statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 16, marginTop: 16 },
-  stat: { flexDirection: "row", alignItems: "center", gap: 6 },
-  statText: { color: ExploreColors.text, fontWeight: "600", fontSize: 13 },
+  gallery: { paddingHorizontal: Layout.screenPadding, paddingTop: 12, gap: 10 },
+  galleryImg: { width: 88, height: 72, borderRadius: 12 },
+  content: { padding: Layout.screenPadding, paddingTop: 16 },
+  title: { fontSize: 22, fontWeight: "800", color: ExploreColors.text },
+  location: {
+    marginTop: 6,
+    color: ExploreColors.textSecondary,
+    fontSize: 14,
+  },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  metaChip: {
+    backgroundColor: "#EEF4FF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  metaChipText: { color: ExploreColors.primary, fontWeight: "700", fontSize: 12 },
+  statsRow: {
+    flexDirection: "row",
+    marginTop: 16,
+    gap: 10,
+  },
+  stat: {
+    flex: 1,
+    backgroundColor: ExploreColors.background,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+    gap: 4,
+  },
+  statText: { fontSize: 12, fontWeight: "600", color: ExploreColors.text },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
     marginTop: 22,
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: "800",
     color: ExploreColors.text,
   },
-  description: { color: ExploreColors.textSecondary, lineHeight: 22, fontSize: 14 },
-  amenities: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  description: {
+    marginTop: 8,
+    color: ExploreColors.textSecondary,
+    lineHeight: 21,
+  },
+  amenities: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   amenityChip: {
-    backgroundColor: ExploreColors.primarySoft,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#EEF4FF",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: 20,
   },
-  amenityText: { color: ExploreColors.primary, fontWeight: "600", fontSize: 12 },
+  amenityText: { color: ExploreColors.primary, fontWeight: "600", fontSize: 13 },
+  vendorCard: {
+    marginTop: 10,
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: "#f8fafc",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  vendorIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#E8F0F7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vendorName: { fontWeight: "800", fontSize: 15, color: ExploreColors.text },
+  vendorMeta: { color: ExploreColors.textSecondary, marginTop: 2, fontSize: 13 },
+  vendorContact: {
+    color: ExploreColors.primary,
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: "600",
+  },
   footer: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: Layout.pad,
+    justifyContent: "space-between",
+    paddingHorizontal: Layout.screenPadding,
     paddingTop: 12,
+    backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderTopColor: ExploreColors.border,
-    backgroundColor: ExploreColors.surface,
+    borderTopColor: "#eee",
   },
-  price: { fontSize: 22, fontWeight: "800", color: ExploreColors.primary },
-  perNight: { color: ExploreColors.textSecondary, fontSize: 12 },
+  price: { fontSize: 20, fontWeight: "800", color: ExploreColors.text },
+  perNight: { fontSize: 12, color: ExploreColors.textSecondary },
   bookBtn: {
     backgroundColor: ExploreColors.primary,
     paddingHorizontal: 28,
     paddingVertical: 14,
-    borderRadius: Layout.radiusSm,
+    borderRadius: 12,
   },
-  bookBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  bookBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
 });

@@ -192,6 +192,8 @@ export default function HomeScreen() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const fetched = useRef(false);
+  const hasToursRef = useRef(false);
+  const hasHotelsRef = useRef(false);
   const searchAnim = useRef(new Animated.Value(0)).current;
   const notifyAnim = useRef(new Animated.Value(0)).current;
 
@@ -277,28 +279,42 @@ export default function HomeScreen() {
     [markNotificationRead]
   );
 
-  const fetchTours = useCallback(async (q = "") => {
+  const fetchTours = useCallback(async (q = "", opts?: { silent?: boolean }) => {
     setError("");
+    const silent = Boolean(opts?.silent && hasToursRef.current);
     try {
-      setLoadingTours(true);
+      if (!silent) setLoadingTours(true);
       const path = q ? `/api/tours?search=${encodeURIComponent(q)}` : "/api/tours";
-      const data = await apiJson<{ tours?: TourItem[] }>(path);
-      setTours(Array.isArray(data.tours) ? data.tours : []);
+      const data = await apiJson<{ tours?: TourItem[] }>(path, { timeoutMs: 25000 });
+      const next = Array.isArray(data.tours) ? data.tours : [];
+      hasToursRef.current = next.length > 0;
+      setTours(next);
     } catch (err: any) {
-      setTours([]);
+      if (!silent) {
+        hasToursRef.current = false;
+        setTours([]);
+      }
       setError(err?.message || "Could not load tours");
     } finally {
       setLoadingTours(false);
     }
   }, []);
 
-  const fetchHotels = useCallback(async () => {
+  const fetchHotels = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = Boolean(opts?.silent && hasHotelsRef.current);
     try {
-      setLoadingHotels(true);
-      const data = await apiJson<{ hotels?: HotelItem[] }>("/api/hotels");
-      setHotels(Array.isArray(data.hotels) ? data.hotels : []);
+      if (!silent) setLoadingHotels(true);
+      const data = await apiJson<{ hotels?: HotelItem[] }>("/api/hotels", {
+        timeoutMs: 25000,
+      });
+      const next = Array.isArray(data.hotels) ? data.hotels : [];
+      hasHotelsRef.current = next.length > 0;
+      setHotels(next);
     } catch {
-      setHotels([]);
+      if (!silent) {
+        hasHotelsRef.current = false;
+        setHotels([]);
+      }
     } finally {
       setLoadingHotels(false);
     }
@@ -329,6 +345,9 @@ export default function HomeScreen() {
         fetched.current = true;
         fetchTours("");
         fetchHotels();
+      } else {
+        // Background refresh without full-screen loaders (feels faster)
+        fetchHotels({ silent: true });
       }
       (async () => {
         await loadLocal();
@@ -339,8 +358,12 @@ export default function HomeScreen() {
   );
 
   useEffect(() => {
-    if (!search.trim()) return;
-    const id = setTimeout(() => fetchTours(search.trim()), 400);
+    if (!search.trim()) {
+      // Restore full list without spinner if we already have data
+      if (fetched.current) fetchTours("", { silent: true });
+      return;
+    }
+    const id = setTimeout(() => fetchTours(search.trim(), { silent: true }), 450);
     return () => clearTimeout(id);
   }, [search, fetchTours]);
 

@@ -22,23 +22,30 @@ const createToken = (userId) =>
   authProvider: user.authProvider,
 });
 
+const normalizePhone = (value) =>
+  value == null ? "" : String(value).replace(/[\s\-()]/g, "").trim();
+
 // register controller
 exports.register = async (req, res) => {
   try {
-    const { fullname, phone, password } = req.body;
-    const email = req.body.email ? String(req.body.email).toLowerCase() : "";
+    const fullname = req.body.fullname ? String(req.body.fullname).trim() : "";
+    const password = req.body.password;
+    const email = req.body.email ? String(req.body.email).trim().toLowerCase() : "";
+    const phone = normalizePhone(req.body.phone);
 
-    // ✅ validation
     if (!fullname || !password || (!email && !phone)) {
       return res.status(400).json({
         msg: "Name, password and email or phone required",
       });
     }
 
-    // ✅ check existing user
-     const existingUser = await User.findOne({
+    if (password.length < 6) {
+      return res.status(400).json({ msg: "Password must be at least 6 characters" });
+    }
+
+    const existingUser = await User.findOne({
       $or: [
-        ...(email ? [{ email: email.toLowerCase() }] : []),
+        ...(email ? [{ email }] : []),
         ...(phone ? [{ phone }] : []),
       ],
     });
@@ -47,15 +54,15 @@ exports.register = async (req, res) => {
       return res.status(400).json({ msg: "User already exists" });
     }
 
-    // ✅ hash password
     const hashed = await bcrypt.hash(password, 10);
 
-    // ✅ create user
+    // Avoid empty-string unique collisions (sparse index only skips null/undefined)
     const user = await User.create({
       fullname,
-      email,
-      phone,
+      ...(email ? { email } : {}),
+      ...(phone ? { phone } : {}),
       password: hashed,
+      authProvider: "local",
     });
 
     const token = createToken(user._id);
@@ -66,61 +73,52 @@ exports.register = async (req, res) => {
       token,
       user: toSafeUser(user),
     });
-
   } catch (err) {
+    if (err?.code === 11000) {
+      return res.status(400).json({ msg: "User already exists" });
+    }
     res.status(500).json({ msg: err.message });
   }
 };
-//email login
+
+// email / phone login
 exports.login = async (req, res) => {
   try {
-    const { email, phone, password } = req.body;
+    const email = req.body.email ? String(req.body.email).trim().toLowerCase() : "";
+    const phone = normalizePhone(req.body.phone);
+    const password = req.body.password;
 
-   
     if ((!email && !phone) || !password) {
       return res.status(400).json({ msg: "Email/Phone and password required" });
     }
 
-    const query = email ? { email: email.toLowerCase() } : { phone };
+    const query = email ? { email } : { phone };
     const user = await User.findOne(query);
 
     if (!user) {
       return res.status(400).json({ msg: "User not found" });
     }
 
-
-     if (!user.password) {
-      return res.status(400).json({ msg: `Please continue with ${user.authProvider}` });
+    if (!user.password) {
+      return res.status(400).json({
+        msg: `Please continue with ${user.authProvider || "social login"}`,
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-
 
     if (!isMatch) {
       return res.status(400).json({ msg: "Wrong password" });
     }
 
-    // const token = jwt.sign(
-    //   { id: user._id },
-    //   process.env.JWT_SECRET_KEY,
-    //   { expiresIn: "7d" }
-       const token = createToken(user._id);
-    // );
+    const token = createToken(user._id);
 
-   const safeUser = {
-  _id: user._id,
-  fullname: user.fullname,
-  email: user.email,
-  phone: user.phone,
-  avatar: user.avatar,
-};
-
-res.json({
-  msg: "Login success",
-  token,
-  user: toSafeUser(user),
-});
-
+    res.json({
+      success: true,
+      msg: "Login success",
+      token,
+      user: toSafeUser(user),
+    });
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }

@@ -23,7 +23,6 @@ export default ({ config }) => {
     },
     android: {
       package: "com.viztravel.vendor",
-      versionCode: 1,
       adaptiveIcon: {
         backgroundColor: "#003D82",
         foregroundImage: "./assets/android-icon-foreground.png",
@@ -38,6 +37,8 @@ export default ({ config }) => {
     },
     plugins: [
       "expo-router",
+      "expo-font",
+      "expo-image",
       [
         "expo-image-picker",
         {
@@ -49,7 +50,7 @@ export default ({ config }) => {
     extra: {
       apiBaseUrl,
       eas: {
-        projectId: process.env.EAS_PROJECT_ID || undefined,
+        projectId: "ceab8e5b-1ee3-4f64-8cc2-2b5816e58a1e",
       },
     },
   };
