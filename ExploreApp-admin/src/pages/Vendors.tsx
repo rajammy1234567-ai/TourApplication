@@ -6,7 +6,6 @@ import { Modal } from "../components/ui/Modal";
 import { PageBanner } from "../components/ui/PageBanner";
 import { PageToolbar } from "../components/ui/PageToolbar";
 import {
-  businessTypeLabel,
   PartnerDetailView,
   type PartnerInfo,
 } from "../components/partners/PartnerDetailView";
@@ -15,7 +14,7 @@ import {
   type VendorStats,
 } from "../components/partners/PartnerPortfolioView";
 import { IconHandshake, IconInbox, IconPanelTitle, IconStore } from "../components/ui/Icons";
-import { formatDate, formatINR, initials } from "../utils/format";
+import { formatINR, initials } from "../utils/format";
 
 type Vendor = {
   _id: string;
