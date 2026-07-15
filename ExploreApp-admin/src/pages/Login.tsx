@@ -37,7 +37,7 @@ export function Login({ onSuccess }: { onSuccess: (token: string, admin: object)
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
         if (res.status === 0 || !res.status) {
-          throw new Error("Backend not reachable. Start ExploreApp-backend on port 5000.");
+          throw new Error("Backend not reachable. Start VizTravel backend on port 5000.");
         }
         throw new Error(data.message || `Login failed (${res.status})`);
       }
@@ -59,7 +59,7 @@ export function Login({ onSuccess }: { onSuccess: (token: string, admin: object)
             Manage your <em>travel empire</em>
           </h1>
           <p>
-            The official admin panel for Explore — approve tour packages, manage
+            The official admin panel for VizTravel — approve tour packages, manage
             hotel stays, onboard vendors & track every booking.
           </p>
           <div className="login-features">
@@ -75,7 +75,7 @@ export function Login({ onSuccess }: { onSuccess: (token: string, admin: object)
 
       <div className="login-form-side">
         <form className="login-card" onSubmit={handleSubmit}>
-          <h2>Explore Admin</h2>
+          <h2>VizTravel Admin</h2>
           <p className="sub">Tour & Travel App — Official Control Panel</p>
           {error && <div className="error-banner">{error}</div>}
           <div className="field">

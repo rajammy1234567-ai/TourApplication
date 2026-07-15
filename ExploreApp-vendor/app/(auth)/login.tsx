@@ -83,7 +83,7 @@ export default function VendorLogin() {
             <View style={styles.logoWrap}>
               <Ionicons name="storefront" size={32} color={Colors.primary} />
             </View>
-            <Text style={styles.heroTitle}>Explore Vendor</Text>
+            <Text style={styles.heroTitle}>VizTravel Vendor</Text>
             <Text style={styles.heroSub}>Manage tours, stays & bookings</Text>
           </View>
         </SafeAreaView>

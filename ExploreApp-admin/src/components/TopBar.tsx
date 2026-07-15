@@ -10,12 +10,12 @@ import {
 } from "./ui/Icons";
 
 const PAGE_META: Record<Page, { title: string; sub: string; icon: React.ReactNode }> = {
-  dashboard: { title: "Command Center", sub: "Your Explore travel platform at a glance", icon: <IconGlobe size={16} /> },
-  applications: { title: "Partner Applications", sub: "New tour & stay vendors waiting to join Explore", icon: <IconClipboard size={16} /> },
-  vendors: { title: "Tour Partners", sub: "Vendors listing trips & stays on Explore", icon: <IconHandshake size={16} /> },
+  dashboard: { title: "Command Center", sub: "Your VizTravel platform at a glance", icon: <IconGlobe size={16} /> },
+  applications: { title: "Partner Applications", sub: "New tour & stay vendors waiting to join VizTravel", icon: <IconClipboard size={16} /> },
+  vendors: { title: "Tour Partners", sub: "Vendors listing trips & stays on VizTravel", icon: <IconHandshake size={16} /> },
   users: { title: "Travelers", sub: "Customers exploring & booking adventures", icon: <IconLuggage size={16} /> },
   listings: { title: "Tours & Stays", sub: "Approve tour packages & hotel listings", icon: <IconMap size={16} /> },
-  bookings: { title: "Trip Bookings", sub: "Every tour booking on Explore — who, what & when", icon: <IconTicket size={16} /> },
+  bookings: { title: "Trip Bookings", sub: "Every tour booking on VizTravel — who, what & when", icon: <IconTicket size={16} /> },
 };
 
 export function TopBar({ page }: { page: Page }) {
@@ -42,7 +42,7 @@ export function TopBar({ page }: { page: Page }) {
         </div>
         <div className="top-bar-badge">
           <span className="pulse-dot" />
-          Explore Live
+          VizTravel Live
         </div>
       </div>
     </header>

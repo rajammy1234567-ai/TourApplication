@@ -56,8 +56,8 @@ export function Users() {
       <PageBanner
         page="users"
         icon={<IconLuggage size={28} />}
-        label="Explore Travelers"
-        hint="People who sign up on the Explore app to book tours & adventures"
+        label="VizTravel Travelers"
+        hint="People who sign up on the VizTravel app to book tours & adventures"
         pills={[
           { value: users.length, label: "Registered", gold: true },
           { value: filtered.length, label: "Showing" },
@@ -82,7 +82,7 @@ export function Users() {
               <EmptyState
                 icon={<IconInbox size={40} />}
                 title="No travelers found"
-                subtitle="When users sign up on the Explore app, their profiles appear here."
+                subtitle="When users sign up on the VizTravel app, their profiles appear here."
               />
             ) : (
               <table>

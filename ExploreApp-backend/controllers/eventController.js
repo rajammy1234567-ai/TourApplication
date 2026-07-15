@@ -7,7 +7,7 @@ const TICKETMASTER_EVENTS_URL =
 const demoEvents = [
   {
     id: "demo-event-1",
-    title: "Explore Music Night",
+    title: "VizTravel Music Night",
     description:
       "An open-air live music evening with local artists, food stalls, and travel community meetups.",
     date: "2026-05-12",

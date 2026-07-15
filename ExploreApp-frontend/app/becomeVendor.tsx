@@ -53,7 +53,7 @@ const STATUS_CONFIG = {
   },
   approved: {
     title: "Approved",
-    subtitle: "You're approved to host on Explore",
+    subtitle: "You're approved to host on VizTravel",
     color: "#16A34A",
     soft: "#DCFCE7",
     icon: "checkmark-circle-outline" as const,
@@ -293,7 +293,7 @@ export default function BecomeVendorScreen() {
                 <Text style={styles.credentialsTitle}>Vendor app login</Text>
               </View>
               <Text style={styles.credentialsHint}>
-                Download the Explore Vendor app and sign in with these credentials:
+                Download the VizTravel Vendor app and sign in with these credentials:
               </Text>
               <View style={styles.credentialRow}>
                 <Text style={styles.credentialLabel}>Login ID (Phone)</Text>
@@ -317,7 +317,7 @@ export default function BecomeVendorScreen() {
 
             <View style={styles.nextCard}>
               <Text style={styles.sectionTitle}>Next steps</Text>
-              <Text style={styles.nextStep}>1. Download & open the Explore Vendor app</Text>
+              <Text style={styles.nextStep}>1. Download & open the VizTravel Vendor app</Text>
               <Text style={styles.nextStep}>2. Login with phone number above</Text>
               <Text style={styles.nextStep}>3. Use the password shown above</Text>
               <Text style={styles.nextStep}>4. Add tours or stays — admin will approve listings</Text>

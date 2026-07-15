@@ -221,7 +221,7 @@ export function Vendors() {
         page="vendors"
         icon={<IconHandshake size={28} />}
         label="Tour Partners"
-        hint="Vendor-wise tours, stays, bookings and revenue on Explore"
+        hint="Vendor-wise tours, stays, bookings and revenue on VizTravel"
         pills={[
           { value: activeCount, label: "Active", gold: true },
           { value: totalTours + totalHotels, label: "Listings" },
@@ -240,14 +240,14 @@ export function Vendors() {
       ) : (
         <div className="panel panel-travel">
           <div className="panel-head">
-            <IconPanelTitle icon={<IconStore size={18} />}>Explore Partner Directory</IconPanelTitle>
+            <IconPanelTitle icon={<IconStore size={18} />}>VizTravel Partner Directory</IconPanelTitle>
           </div>
           <div className="panel-body table-wrap">
             {filtered.length === 0 ? (
               <EmptyState
                 icon={<IconInbox size={40} />}
                 title="No tour partners found"
-                subtitle="Approved vendors who list tours and stays on Explore will show up here."
+                subtitle="Approved vendors who list tours and stays on VizTravel will show up here."
               />
             ) : (
               <table className="vendors-table">

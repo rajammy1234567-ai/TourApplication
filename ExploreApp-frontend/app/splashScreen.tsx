@@ -82,7 +82,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onGetStarted }) => {
             </View>
 
             {/* TITLE */}
-            <Text style={styles.title}>Travel Explorer</Text>
+            <Text style={styles.title}>VizTravel</Text>
 
             <Text style={styles.subtitle}>
                Discover the world&apos;s most amazing{"\n"}destinations with us.

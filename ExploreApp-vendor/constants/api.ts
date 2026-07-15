@@ -57,7 +57,7 @@ const resolveBaseUrl = () => {
 export const API_BASE_URL = resolveBaseUrl();
 
 if (__DEV__) {
-  console.log("[Explore Vendor] API:", API_BASE_URL);
+  console.log("[VizTravel Vendor] API:", API_BASE_URL);
 }
 
 export const apiUrl = (path: string) =>

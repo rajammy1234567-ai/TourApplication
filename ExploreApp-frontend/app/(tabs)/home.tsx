@@ -406,7 +406,7 @@ export default function HomeScreen() {
               <Ionicons name="compass" size={18} color={ExploreColors.primary} />
             </View>
             <View>
-              <Text style={styles.brandName}>Explore</Text>
+              <Text style={styles.brandName}>VizTravel</Text>
               <Text style={styles.greet}>
                 {greeting()}, {userName.split(" ")[0]}
               </Text>
@@ -457,7 +457,7 @@ export default function HomeScreen() {
           <SectionHeader
             title="Popular destinations"
             subtitle="Trending places across India"
-            actionLabel="Explore"
+            actionLabel="Browse"
             onAction={() => router.push("/(tabs)/tour")}
           />
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -609,7 +609,7 @@ export default function HomeScreen() {
           onPress={() => router.push("/becomeVendor")}
         >
           <View style={styles.hostText}>
-            <Text style={styles.hostTitle}>Earn by hosting on Explore</Text>
+            <Text style={styles.hostTitle}>Earn by hosting on VizTravel</Text>
             <Text style={styles.hostSub}>
               List your property or tour — it's easy to start and you control your availability.
             </Text>

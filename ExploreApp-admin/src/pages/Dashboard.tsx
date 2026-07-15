@@ -72,7 +72,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
         <div className="travel-hero-content">
           <div>
             <h2>
-              Explore<span style={{ color: "var(--gold)" }}>.</span> Admin
+              VizTravel<span style={{ color: "var(--gold)" }}>.</span> Admin
             </h2>
             <p>
               The official control panel for your tour & travel app — manage
@@ -99,7 +99,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
       {(stats?.pendingApplications || 0) > 0 && (
         <div className="alert-banner">
           <span className="alert-icon"><IconBell size={18} /></span>
-          <strong>{stats?.pendingApplications}</strong> new partner(s) want to list tours/stays on Explore —{" "}
+          <strong>{stats?.pendingApplications}</strong> new partner(s) want to list tours/stays on VizTravel —{" "}
           <button type="button" className="btn-ghost" onClick={() => onNavigate("applications")}>
             Review applications →
           </button>
@@ -153,7 +153,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
             <EmptyState
               icon={<IconInbox size={40} />}
               title="No trip bookings yet"
-              subtitle="When travelers book tours on Explore, they'll show up here."
+              subtitle="When travelers book tours on VizTravel, they'll show up here."
             />
           ) : (
             <table>

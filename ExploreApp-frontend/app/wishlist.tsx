@@ -147,7 +147,7 @@ export default function WishlistScreen() {
             style={styles.exploreBtn}
             onPress={() => router.push("/(tabs)/home")}
           >
-            <Text style={styles.exploreBtnText}>Explore Tours</Text>
+            <Text style={styles.exploreBtnText}>Browse Tours</Text>
           </TouchableOpacity>
         </View>
       ) : (

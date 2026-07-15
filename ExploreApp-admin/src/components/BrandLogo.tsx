@@ -15,7 +15,7 @@ export function BrandLogo({
       </div>
       <div className="explore-brand-text">
         <span className="explore-brand-name">
-          Explore<span className="explore-dot">.</span>
+          VizTravel<span className="explore-dot">.</span>
         </span>
         <span className="explore-brand-tag">Tour & Travel Admin</span>
       </div>

@@ -81,9 +81,9 @@ export function Layout({
           <div className="sidebar-travel-card">
             <strong className="sidebar-card-title">
               <IconPlane size={14} />
-              Explore Tour & Travel
+              VizTravel Tour & Travel
             </strong>
-            <p>Official admin for the Explore app — tours, stays, partners & bookings.</p>
+            <p>Official admin for the VizTravel app — tours, stays, partners & bookings.</p>
           </div>
 
           <div className="sidebar-footer">

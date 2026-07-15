@@ -438,7 +438,7 @@ const updateListingStatus = async (type, listingId, status) => {
         title: status === "approved" ? `${label} listing approved` : `${label} listing update`,
         body:
           status === "approved"
-            ? `Your ${label} "${listing.title}" is now live on Explore.`
+            ? `Your ${label} "${listing.title}" is now live on VizTravel.`
             : `Your ${label} "${listing.title}" was not approved. Contact admin or update and resubmit.`,
         link: "/becomeVendor",
         meta: { listingId: listing._id, listingType: type, status },

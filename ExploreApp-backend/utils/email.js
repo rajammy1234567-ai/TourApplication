@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 
 exports.sendEmailOTP = async (email, otp) => {
   await transporter.sendMail({
-    from: `"Explore App" <${process.env.EMAIL_USER}>`,
+    from: `"VizTravel" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: 'Your OTP Code',
     html: `<h2>Your OTP is: ${otp}</h2>`,

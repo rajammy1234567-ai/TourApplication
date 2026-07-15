@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Explore Vendor",
-    "slug": "ExploreApp-vendor",
+    "name": "VizTravel Vendor",
+    "slug": "viztravel-vendor",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "explorevendor",
+    "scheme": "viztravelvendor",
     "ios": {
       "supportsTablet": true
     },
@@ -28,7 +28,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Explore Vendor to access your photos for listing images."
+          "photosPermission": "Allow VizTravel Vendor to access your photos for listing images."
         }
       ]
     ]

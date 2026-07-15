@@ -72,7 +72,7 @@ export function Bookings() {
         page="bookings"
         icon={<IconTicket size={28} />}
         label="All Bookings"
-        hint="Tour packages and hotel stays booked on Explore"
+        hint="Tour packages and hotel stays booked on VizTravel"
         pills={[
           { value: bookings.length, label: "Total", gold: true },
           { value: formatINR(totalRevenue), label: "Revenue" },
@@ -122,7 +122,7 @@ export function Bookings() {
               <EmptyState
                 icon={<IconInbox size={40} />}
                 title="No bookings yet"
-                subtitle="When travelers book tours or stays on Explore, details will show here."
+                subtitle="When travelers book tours or stays on VizTravel, details will show here."
               />
             ) : (
               <table>

@@ -208,7 +208,7 @@ export default function BookNow() {
       key: order.keyId,
       amount: order.amount,
       currency: order.currency,
-      name: "Explore",
+      name: "VizTravel",
       description: order.packageName || listing.title,
       order_id: order.orderId,
       prefill: {

@@ -69,7 +69,7 @@ export const API_BASE_URL = resolveBaseUrl();
 if (__DEV__) {
   // Log after a tick so Constants often already has hostUri
   setTimeout(() => {
-    console.log("[Explore User] API:", getApiBaseUrl());
+    console.log("[VizTravel User] API:", getApiBaseUrl());
   }, 500);
 }
 

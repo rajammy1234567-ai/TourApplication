@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "viztravel",
+    "name": "VizTravel",
     "slug": "viztravel",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Explore uses your location to find nearby events."
+        "NSLocationWhenInUseUsageDescription": "VizTravel uses your location to find nearby events."
       }
     },
     "android": {

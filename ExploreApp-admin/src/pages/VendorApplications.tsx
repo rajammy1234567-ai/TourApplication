@@ -172,7 +172,7 @@ export function VendorApplications() {
         page="applications"
         icon={<IconClipboard size={28} />}
         label="Partner Onboarding"
-        hint="Review businesses that want to list tours & stays on Explore"
+        hint="Review businesses that want to list tours & stays on VizTravel"
         pills={[
           { value: pendingCount, label: "Awaiting Review", gold: pendingCount > 0 },
           { value: applications.length, label: "In This View" },
@@ -211,7 +211,7 @@ export function VendorApplications() {
               <EmptyState
                 icon={<IconInbox size={40} />}
                 title="No partner requests found"
-                subtitle="When someone applies to become a tour partner on Explore, they'll appear here."
+                subtitle="When someone applies to become a tour partner on VizTravel, they'll appear here."
               />
             ) : (
               <table>
@@ -315,7 +315,7 @@ export function VendorApplications() {
       {passwordModal ? (
         <Modal
           title="Approve Tour Partner"
-          description="Set a login password. The vendor will sign in to Explore Partner App with their phone and this password."
+          description="Set a login password. The vendor will sign in to VizTravel Partner App with their phone and this password."
           onClose={() => setPasswordModal(null)}
           actions={
             <>

@@ -141,7 +141,7 @@ export function Listings() {
         page="listings"
         icon={<IconMap size={28} />}
         label="Tours & Stays Catalog"
-        hint="Full package details from partners — review before going live on Explore"
+        hint="Full package details from partners — review before going live on VizTravel"
         pills={[
           { value: tours.length, label: "Tour Packages" },
           { value: hotels.length, label: "Hotels & Stays" },
@@ -205,7 +205,7 @@ export function Listings() {
               <EmptyState
                 icon={<IconInbox size={40} />}
                 title={`No ${tab === "tours" ? "tour packages" : "stays"} found`}
-                subtitle="When partners add listings on Explore, they'll appear here for your review."
+                subtitle="When partners add listings on VizTravel, they'll appear here for your review."
               />
             ) : (
               <table>
