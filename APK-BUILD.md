@@ -1,4 +1,4 @@
-# VizTravel — Production URLs & APK build
+# VizTravel — Expo Go + APK (same live API)
 
 ## Live services
 
@@ -7,11 +7,87 @@
 | **API** | https://tourapplication-api.onrender.com |
 | **Admin** | https://tourapplication-admin.onrender.com |
 
-## Apps wired to production API
+**Default:** Expo Go **and** APK both hit the **live Render API**.  
+You do **not** need backend on your PC for normal testing.
 
-- **User app** (`ExploreApp-frontend`) → API above (release / EAS)
-- **Vendor app** (`ExploreApp-vendor`) → API above (release / EAS)
-- **Admin** (`ExploreApp-admin`) → `VITE_API_BASE_URL` = API above
+---
+
+## How API mode works
+
+| Mode | When | API used |
+|------|------|----------|
+| **Expo Go (default)** | `npx expo start` | Production Render |
+| **APK** | EAS `preview` / `production` | Production Render |
+| **Local backend (optional)** | Set `EXPO_PUBLIC_USE_LOCAL_API=1` | `http://YOUR_PC_IP:5000` |
+
+Config files:
+
+- User: `ExploreApp-frontend/.env` + `constants/api.ts` + `app.config.js`
+- Vendor: `ExploreApp-vendor/.env` + `constants/api.ts` + `app.config.js`
+- EAS: `eas.json` always injects production URL for APK builds
+
+---
+
+## Test in Expo Go (user app)
+
+```powershell
+cd E:\Programming\Explore\ExploreApp-frontend
+npx expo start -c
+```
+
+1. Scan QR with **Expo Go**
+2. Phone must have **internet**
+3. First request can take 20–40s (Render free tier wake-up) — wait, then retry signup/login
+
+Vendor:
+
+```powershell
+cd E:\Programming\Explore\ExploreApp-vendor
+npx expo start -c
+```
+
+---
+
+## Build User APK
+
+```powershell
+cd E:\Programming\Explore\ExploreApp-frontend
+eas login
+eas whoami
+# should be apk_build_green
+eas build -p android --profile preview
+```
+
+Download APK from Expo dashboard when finished.
+
+## Build Vendor APK
+
+```powershell
+cd E:\Programming\Explore\ExploreApp-vendor
+eas build -p android --profile preview
+```
+
+---
+
+## Optional: use local backend
+
+1. Start API:
+
+```powershell
+cd E:\Programming\Explore\ExploreApp-backend
+npm start
+```
+
+2. In app `.env`:
+
+```env
+EXPO_PUBLIC_FORCE_PROD_API=0
+EXPO_PUBLIC_USE_LOCAL_API=1
+EXPO_PUBLIC_API_PORT=5000
+```
+
+3. Restart Expo with cache clear: `npx expo start -c`  
+4. Phone + PC same Wi‑Fi; Windows Firewall allow port 5000.
 
 ---
 
@@ -27,70 +103,15 @@ CLOUDINARY_API_SECRET=...
 NODE_ENV=production
 ```
 
----
-
-## Admin (Render Static Site) env
+## Admin (Render Static)
 
 ```
 VITE_API_BASE_URL=https://tourapplication-api.onrender.com
 ```
 
-Root: `ExploreApp-admin`  
-Build: `npm install && npm run build`  
-Publish: `dist`  
-**Redeploy after setting env.**
-
 ---
 
-## Build User APK (Android)
-
-```powershell
-cd E:\Programming\Explore\ExploreApp-frontend
-npm install
-npx eas login
-npx eas build -p android --profile preview
-```
-
-- Profile `preview` = **APK** (easy install)
-- Profile `production` = also APK in this repo config
-
-Download APK from Expo dashboard when build finishes.
-
----
-
-## Build Vendor APK (Android)
-
-```powershell
-cd E:\Programming\Explore\ExploreApp-vendor
-npm install
-npx eas init
-npx eas login
-npx eas build -p android --profile preview
-```
-
-First time vendor may need:
-
-```powershell
-npx eas init
-```
-
-Copy `projectId` into `app.config.js` → `extra.eas.projectId` if prompted.
-
----
-
-## Local dev (optional)
-
-Expo Go still uses LAN backend if Metro is running.  
-To force production API in dev:
-
-```env
-EXPO_PUBLIC_FORCE_PROD_API=1
-EXPO_PUBLIC_API_BASE_URL=https://tourapplication-api.onrender.com
-```
-
----
-
-## Test API
+## Quick health check
 
 ```
 https://tourapplication-api.onrender.com/health

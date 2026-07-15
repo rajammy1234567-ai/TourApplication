@@ -1,12 +1,19 @@
 /**
- * Dynamic Expo config — injects production API for APK / release builds.
+ * Dynamic Expo config — Expo Go + APK both get production API by default.
  */
 const PROD_API = "https://tourapplication-api.onrender.com";
 
-export default ({ config }) => {
-  const apiBaseUrl =
-    process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || PROD_API;
+const rawApi = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+const apiBaseUrl =
+  rawApi && !/localhost|127\.0\.0\.1|192\.168\./i.test(rawApi)
+    ? rawApi
+    : PROD_API;
 
+const forceProdApi =
+  process.env.EXPO_PUBLIC_USE_LOCAL_API !== "1" &&
+  process.env.EXPO_PUBLIC_USE_LOCAL_API !== "true";
+
+export default ({ config }) => {
   return {
     ...config,
     name: "VizTravel Vendor",
@@ -49,6 +56,7 @@ export default ({ config }) => {
     ],
     extra: {
       apiBaseUrl,
+      forceProdApi,
       eas: {
         projectId: "ceab8e5b-1ee3-4f64-8cc2-2b5816e58a1e",
       },

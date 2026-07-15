@@ -8,7 +8,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://tourapplication-api.onrender.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://tourapplication-api.onrender.com",
+        "EXPO_PUBLIC_FORCE_PROD_API": "1"
       }
     },
     "preview": {
