@@ -19,7 +19,10 @@ export const ExploreColors = {
 
 export const Layout = {
   screenWidth: SCREEN_WIDTH,
-  pad: 20,
+  /** Horizontal page padding — safe on narrow phones */
+  pad: Math.max(16, Math.min(20, Math.round(SCREEN_WIDTH * 0.045))),
+  /** Alias used by detail screens */
+  screenPadding: Math.max(16, Math.min(20, Math.round(SCREEN_WIDTH * 0.045))),
   gap: 12,
   sectionGap: 28,
   radius: 14,

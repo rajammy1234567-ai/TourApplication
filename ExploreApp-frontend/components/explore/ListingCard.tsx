@@ -67,18 +67,18 @@ export function ListingCard({
 
       <View style={styles.body}>
         <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={styles.title} numberOfLines={2}>
             {title}
           </Text>
           <View style={styles.rating}>
             <Ionicons name="star" size={12} color="#F59E0B" />
-            <Text style={styles.ratingText}>{Number(rating).toFixed(1)}</Text>
+            <Text style={styles.ratingText}>{Number(rating || 0).toFixed(1)}</Text>
           </View>
         </View>
         <Text style={styles.subtitle} numberOfLines={1}>
           {subtitle}
         </Text>
-        <Text style={styles.price}>
+        <Text style={styles.price} numberOfLines={1}>
           {formatINR(price)}
           {priceSuffix ? <Text style={styles.priceSuffix}>{priceSuffix}</Text> : null}
         </Text>
@@ -131,41 +131,50 @@ const styles = StyleSheet.create({
   body: {
     marginTop: 8,
     gap: 2,
+    width: "100%",
+    overflow: "hidden",
   },
   titleRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 8,
+    gap: 6,
+    width: "100%",
   },
   title: {
     flex: 1,
-    fontSize: 15,
+    minWidth: 0,
+    fontSize: 14,
     fontWeight: "600",
     color: ExploreColors.text,
+    lineHeight: 18,
   },
   rating: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    gap: 2,
+    flexShrink: 0,
+    marginTop: 1,
   },
   ratingText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
     color: ExploreColors.text,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: ExploreColors.textSecondary,
+    width: "100%",
   },
   price: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
     color: ExploreColors.text,
     marginTop: 2,
+    width: "100%",
   },
   priceSuffix: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "400",
     color: ExploreColors.textSecondary,
   },
