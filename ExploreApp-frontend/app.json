@@ -25,7 +25,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "usesCleartextTraffic": true,
-      "package": "com.viztravel.app"
+      "package": "com.viztravelexplore.app"
     },
     "web": {
       "output": "static",

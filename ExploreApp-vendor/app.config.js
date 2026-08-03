@@ -1,6 +1,3 @@
-/**
- * Dynamic Expo config — Expo Go + APK both get production API by default.
- */
 const PROD_API = "https://tourapplication-api.onrender.com";
 
 const rawApi = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
