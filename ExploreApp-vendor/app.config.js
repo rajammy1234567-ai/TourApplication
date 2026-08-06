@@ -15,7 +15,7 @@ export default ({ config }) => {
     ...config,
     name: "VizTravel Vendor",
     slug: "viztravel-vendor",
-    owner: "apk_build_green",
+    owner: "viz_eas001",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -55,7 +55,7 @@ export default ({ config }) => {
       apiBaseUrl,
       forceProdApi,
       eas: {
-        projectId: "ceab8e5b-1ee3-4f64-8cc2-2b5816e58a1e",
+        projectId: "fc924b67-8f82-4264-94bd-378bb7cbc6cb",
       },
     },
   };
