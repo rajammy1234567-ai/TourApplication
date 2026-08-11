@@ -3,16 +3,18 @@
     "name": "VizTravel Vendor",
     "slug": "viztravel-vendor",
     "owner": "viz_eas001",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "viztravelvendor",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "2"
     },
     "android": {
       "package": "com.viztravel.vendor",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#003D82",
         "foregroundImage": "./assets/android-icon-foreground.png",

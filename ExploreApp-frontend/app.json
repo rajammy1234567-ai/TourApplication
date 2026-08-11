@@ -3,7 +3,7 @@
     "name": "VizTravel",
     "slug": "viztravel",
     "owner": "viz_eas001",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icons/vizTravelicon.png",
     "scheme": "viztravel",
@@ -16,6 +16,7 @@
       }
     },
     "android": {
+      "versionCode": 5,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
@@ -26,7 +27,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "usesCleartextTraffic": true,
-      "package": "com.viztravel.app"
+      "package": "com.viztravels.app"
     },
     "web": {
       "output": "static",

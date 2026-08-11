@@ -20,21 +20,22 @@ export default ({ config }) => {
     name: "VizTravel",
     slug: "viztravel",
     owner: "viz_eas001",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/icons/vizTravelicon.png",
     scheme: "viztravel",
     userInterfaceStyle: "automatic",
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.viztravel.app",
+      bundleIdentifier: "com.viztravels.app",
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           "VizTravel uses your location to find nearby events.",
       },
     },
     android: {
-      package: "com.viztravel.app",
+      package: "com.viztravels.app",
+      versionCode: 5,
       permissions: ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
       adaptiveIcon: {
         foregroundImage: "./assets/icons/vizTravelicon.png",
